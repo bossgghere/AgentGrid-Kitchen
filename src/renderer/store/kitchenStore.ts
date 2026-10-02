@@ -101,7 +101,14 @@ const loadSavedProjects = (): ProjectItem[] => {
       const saved = localStorage.getItem("ag_projects");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((p) => {
+            if (p.path && p.path.includes("AgentGrid-Kitchen")) {
+              return { ...p, path: "" };
+            }
+            return p;
+          });
+        }
       }
     } catch {}
   }
