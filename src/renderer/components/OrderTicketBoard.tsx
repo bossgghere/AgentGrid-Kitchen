@@ -8,7 +8,6 @@ export const OrderTicketBoard: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [assignee, setAssignee] = useState<ChefRole>("linecook");
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,7 +16,7 @@ export const OrderTicketBoard: React.FC = () => {
     await createTicket({
       title: title.trim(),
       description: description.trim(),
-      assignee,
+      assignee: "headchef",
       status: "pending",
     });
 
@@ -36,13 +35,14 @@ export const OrderTicketBoard: React.FC = () => {
       <div className="flex items-center justify-between pb-2 border-b border-slate-800">
         <div>
           <h2 className="text-sm font-bold text-slate-100">📋 Order Ticket Board</h2>
-          <p className="text-[10px] text-slate-400">Expedition Task Ledger</p>
+          <p className="text-[10px] text-slate-400">Autonomous Brigade Expedition Ledger</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded transition-colors"
+          className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded transition-colors flex items-center space-x-1"
         >
-          + New Order Ticket
+          <span>🍽️</span>
+          <span>Place Guest Order</span>
         </button>
       </div>
 
@@ -100,61 +100,66 @@ export const OrderTicketBoard: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal for New Ticket */}
+      {/* Modal for New Order */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <form onSubmit={handleCreate} className="bg-slate-900 border border-slate-700 rounded-lg p-4 w-full max-w-sm space-y-3">
-            <h3 className="text-sm font-bold text-slate-100">Issue New Guest Order Ticket</h3>
+          <form onSubmit={handleCreate} className="bg-slate-900 border border-slate-700 rounded-lg p-4 w-full max-w-sm space-y-3 shadow-xl">
+            <div>
+              <h3 className="text-sm font-bold text-slate-100 flex items-center space-x-1.5">
+                <span>🍽️</span>
+                <span>Place Guest Order to Head Chef</span>
+              </h3>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                Head Chef orchestrates the recipe and automatically delegates tasks to station chefs.
+              </p>
+            </div>
             
             <div>
-              <label className="text-[10px] text-slate-400">Order Title</label>
+              <label className="text-[10px] text-slate-400 font-semibold">Dish / Feature Goal</label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Build User Login Form"
+                placeholder="e.g. Build User Authentication System"
                 required
-                className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-amber-500"
+                className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500"
               />
             </div>
 
             <div>
-              <label className="text-[10px] text-slate-400">Description</label>
+              <label className="text-[10px] text-slate-400 font-semibold">Recipe Specifications</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Details of the recipe feature..."
-                rows={2}
-                className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-amber-500"
+                placeholder="Describe desired behavior, APIs, and UI requirements..."
+                rows={3}
+                className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500"
               />
             </div>
 
-            <div>
-              <label className="text-[10px] text-slate-400">Assign Station Chef</label>
-              <select
-                value={assignee}
-                onChange={(e) => setAssignee(e.target.value as ChefRole)}
-                className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-amber-500"
-              >
-                {CHEF_ROLES.map((role) => (
-                  <option key={role} value={role}>{CHEF_TITLES[role]}</option>
-                ))}
-              </select>
+            <div className="bg-slate-950 p-2.5 rounded border border-slate-800 text-[10px] space-y-1 text-slate-300">
+              <div className="font-bold text-amber-400 flex items-center space-x-1">
+                <span>👨‍🍳</span>
+                <span>Autonomous Delegation Active</span>
+              </div>
+              <p className="text-slate-400 leading-tight">
+                You order the feature. The <strong>Head Chef</strong> formulates the recipe plan and dispatches specialized sub-tickets to the <strong>Line Cook</strong> (Backend/Code), <strong>Plating Chef</strong> (UI/UX), and <strong>Food Inspector</strong> (QA).
+              </p>
             </div>
 
             <div className="flex justify-end space-x-2 pt-2">
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded"
+                className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded"
+                className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded transition-colors"
               >
-                Issue Ticket
+                👨‍🍳 Send Order to Kitchen
               </button>
             </div>
           </form>

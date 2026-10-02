@@ -95,7 +95,7 @@ const storeInstance = new ReactiveStore<KitchenState>((set, get) => ({
   createTicket: async (ticketInput) => {
     if (typeof window !== "undefined" && window.agentgrid) {
       const created = await window.agentgrid.createTicket(ticketInput);
-      set((state) => ({ tickets: [...state.tickets, created] }));
+      await get().fetchTickets();
       return created;
     }
   },

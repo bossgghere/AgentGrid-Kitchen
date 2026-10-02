@@ -78,7 +78,7 @@ export class IpcController {
       return JSON.parse(raw);
     });
 
-    // 7. Create Order Ticket
+    // 7. Create Order Ticket (with Head Chef Autonomous Delegation)
     ipcMain.handle(
       IPC_CHANNELS.CREATE_TICKET,
       (_event, ticketInput: Omit<OrderTicket, "id" | "createdAt" | "updatedAt">) => {
@@ -86,14 +86,83 @@ export class IpcController {
         const raw = fs.existsSync(ticketsPath) ? fs.readFileSync(ticketsPath, "utf-8") : "[]";
         const tickets: OrderTicket[] = JSON.parse(raw);
 
+        const now = new Date().toISOString();
         const newTicket: OrderTicket = {
           ...ticketInput,
           id: `tkt-${Date.now()}`,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          createdAt: now,
+          updatedAt: now,
         };
 
         tickets.push(newTicket);
+
+        // Head Chef Autonomous Task Decomposition:
+        // When an order is placed to the Head Chef, the Head Chef formulates recipe_plan.md
+        // and dispatches specialized sub-tickets to the Line Cook, Plating Chef, and Food Inspector.
+        if (newTicket.assignee === "headchef") {
+          // 1. Update recipe_plan.md
+          const planPath = path.join(this.initializer.getHiveRoot(), "recipe_plan.md");
+          const planContent = `# 📋 Master Recipe Plan — ${newTicket.title}\n\n` +
+            `**Status**: Orchestrated by Head Chef\n` +
+            `**Executive Guest Order**: ${newTicket.description}\n` +
+            `**Created**: ${now}\n\n` +
+            `## 👨‍🍳 Station Brigade Assignments\n` +
+            `- [ ] **🍳 Line Cook**: Core business logic, APIs, and data modeling\n` +
+            `- [ ] **🎨 Plating Chef**: UI design, components, and layout presentation\n` +
+            `- [ ] **🔍 Food Inspector**: Testing bench, edge-case review, and code inspection\n`;
+          fs.writeFileSync(planPath, planContent);
+
+          // 2. Auto-decompose into station chef sub-tickets
+          const subTickets: OrderTicket[] = [
+            {
+              id: `tkt-${Date.now()}-linecook`,
+              title: `[Line Cook] Backend & Logic: ${newTicket.title}`,
+              description: `Implement core logic, services, and data models for: ${newTicket.description}`,
+              assignee: "linecook",
+              status: "in_progress",
+              createdAt: now,
+              updatedAt: now,
+            },
+            {
+              id: `tkt-${Date.now()}-plating`,
+              title: `[Plating Chef] Visual & UI: ${newTicket.title}`,
+              description: `Design interactive UI components and layout views for: ${newTicket.description}`,
+              assignee: "plating",
+              status: "pending",
+              createdAt: now,
+              updatedAt: now,
+            },
+            {
+              id: `tkt-${Date.now()}-inspector`,
+              title: `[Food Inspector] QA Review: ${newTicket.title}`,
+              description: `Validate code quality, error handling, and test specifications for: ${newTicket.description}`,
+              assignee: "inspector",
+              status: "pending",
+              createdAt: now,
+              updatedAt: now,
+            },
+          ];
+
+          tickets.push(...subTickets);
+
+          // 3. Dispatch official Head Chef dispatch orders to station outboxes
+          const headChefOutbox = path.join(this.initializer.getHiveRoot(), "agents", "headchef", "outbox");
+          if (fs.existsSync(headChefOutbox)) {
+            for (const sub of subTickets) {
+              const msg = {
+                id: `msg-${Date.now()}-${sub.assignee}`,
+                from: "headchef",
+                to: sub.assignee,
+                act: "request",
+                subject: `New Station Order: ${sub.title}`,
+                body: sub.description,
+                timestamp: now,
+              };
+              fs.writeFileSync(path.join(headChefOutbox, `${msg.id}.json`), JSON.stringify(msg, null, 2));
+            }
+          }
+        }
+
         fs.writeFileSync(ticketsPath, JSON.stringify(tickets, null, 2));
         return newTicket;
       }
