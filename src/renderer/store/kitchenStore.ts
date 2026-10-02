@@ -32,9 +32,11 @@ export interface KitchenState {
   projects: ProjectItem[];
   activeProjectId: string;
   chatMessages: ChatMessage[];
+  activeBrigadeChefs: ChefRole[];
 
   // Actions
   setActiveTab: (tab: ChefRole) => void;
+  clearBrigade: () => void;
   selectProject: (id: string) => void;
   addProject: (name: string, folderPath?: string) => void;
   chooseDirectoryForProject: (projectId: string) => Promise<string | null>;
@@ -108,16 +110,19 @@ const storeInstance = new ReactiveStore<KitchenState>((set, get) => ({
   hooks: [],
   projects: loadSavedProjects(),
   activeProjectId: loadSavedProjects()[0].id,
+  activeBrigadeChefs: [], // Starts EMPTY as requested!
   chatMessages: [
     {
       id: "welcome-1",
       sender: "headchef",
-      text: "👨‍🍳 Bonjour, Executive Chef! I am your Head Chef Orchestrator. Select your project folder above and chat with me to order dishes, features, or fixes.",
+      text: "👨‍🍳 Bonjour, Executive Chef! The kitchen is preheated and quiet. Select your project directory above and instruct me what to cook. Only the required station chefs will be summoned to the floor.",
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ],
 
   setActiveTab: (tab) => set({ activeTab: tab }),
+
+  clearBrigade: () => set({ activeBrigadeChefs: [] }),
 
   selectProject: (id) => set({ activeProjectId: id }),
 
@@ -171,6 +176,33 @@ const storeInstance = new ReactiveStore<KitchenState>((set, get) => ({
 
     const currentProject = get().projects.find((p) => p.id === get().activeProjectId) || get().projects[0];
 
+    // Dynamic Station Chef Selection:
+    // Head Chef evaluates task requirements and summons ONLY the necessary chefs to the kitchen floor!
+    const summonedRoles: ChefRole[] = ["headchef"];
+    const isWeb = /web|html|ui|page|frontend|css|design|component|landing|site/i.test(text);
+    const isBackend = /backend|api|server|database|sql|auth|route|endpoint|model/i.test(text);
+    const isResearch = /research|docs|find|search|lookup|ingredient/i.test(text);
+    const isQA = /test|review|inspect|check|validate|audit/i.test(text);
+
+    if (isWeb || isBackend || (!isResearch && !isQA)) {
+      summonedRoles.push("linecook");
+    }
+    if (isWeb) {
+      summonedRoles.push("plating");
+    }
+    if (isResearch) {
+      summonedRoles.push("pantry");
+    }
+    if (isQA || isWeb) {
+      summonedRoles.push("inspector");
+    }
+
+    // Update active brigade chefs so the Left Panel floor and Center Terminal tabs populate dynamically
+    set({
+      activeBrigadeChefs: summonedRoles,
+      activeTab: summonedRoles.includes("linecook") ? "linecook" : "headchef",
+    });
+
     // Trigger autonomous Head Chef order decomposition
     await get().createTicket({
       title: text.trim(),
@@ -182,12 +214,12 @@ const storeInstance = new ReactiveStore<KitchenState>((set, get) => ({
     const chefReply: ChatMessage = {
       id: `chat-${Date.now()}-chef`,
       sender: "headchef",
-      text: `👨‍🍳 Yes, Chef! Order accepted for "${currentProject.name}". Master recipe plan written and brigade dispatched.`,
+      text: `👨‍🍳 Yes, Chef! Summoned ${summonedRoles.filter(r => r !== "headchef").map(r => r.toUpperCase()).join(", ")} to the floor. Master recipe plan is written and live execution has begun.`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       plan: {
-        linecook: `Backend & API logic in ${currentProject.path}`,
-        plating: `Frontend components & responsive UI`,
-        inspector: `QA review, test benchmarks & code inspection`,
+        linecook: summonedRoles.includes("linecook") ? `Backend & file generation in ${currentProject.path}` : undefined,
+        plating: summonedRoles.includes("plating") ? `Visual layout & UI presentation` : undefined,
+        inspector: summonedRoles.includes("inspector") ? `Quality audit & test verification` : undefined,
       },
     };
 

@@ -1,8 +1,8 @@
 import React, { useEffect } from "react";
 import { useKitchenStore } from "./store/kitchenStore.ts";
+import { KitchenFloor } from "./components/KitchenFloor.tsx";
 import { KitchenPass } from "./components/KitchenPass.tsx";
 import { ChefChatPanel } from "./components/ChefChatPanel.tsx";
-import { KitchenRoster } from "./components/KitchenRoster.tsx";
 
 export const App: React.FC = () => {
   const {
@@ -58,15 +58,20 @@ export const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Workspace: Kitchen Pass Terminal (8 cols) + Chef Chat Panel (4 cols) */}
-      <main className="flex-1 grid grid-cols-12 gap-3 px-3 pt-3 pb-1.5 overflow-hidden">
-        {/* Left Column: Kitchen Pass Terminal (8 cols) */}
-        <div className="col-span-8 h-full overflow-hidden">
+      {/* Main 3-Panel Layout (Left: Kitchen Floor, Center: Live Terminal Pass, Right: Chat & Dispatches) */}
+      <main className="flex-1 grid grid-cols-12 gap-3 px-3 py-3 overflow-hidden">
+        {/* Left Column: Kitchen Floor (3 cols) - Starts empty standby, summons agents on demand */}
+        <div className="col-span-3 h-full overflow-hidden">
+          <KitchenFloor />
+        </div>
+
+        {/* Center Column: Kitchen Pass Terminal (6 cols) - Live streaming terminal */}
+        <div className="col-span-6 h-full overflow-hidden">
           <KitchenPass />
         </div>
 
-        {/* Right Column: Chef Chat Panel & Dispatches (4 cols) */}
-        <div className="col-span-4 flex flex-col h-full space-y-2 overflow-hidden">
+        {/* Right Column: Chef Chat & Dispatches (3 cols) */}
+        <div className="col-span-3 flex flex-col h-full space-y-2 overflow-hidden">
           <div className="flex-1 overflow-hidden">
             <ChefChatPanel />
           </div>
@@ -96,11 +101,6 @@ export const App: React.FC = () => {
           </div>
         </div>
       </main>
-
-      {/* Bottom Long Horizontal Section: Kitchen Brigade Roster */}
-      <section className="px-3 pb-3 pt-1 shrink-0">
-        <KitchenRoster />
-      </section>
     </div>
   );
 };
