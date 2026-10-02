@@ -175,6 +175,19 @@ export class IpcController {
 
           const workerScript = path.join(process.cwd(), "src", "application", "chefWorker.ts");
 
+          const getAgyBinary = (): string | null => {
+            if (process.env.AGY_PATH && fs.existsSync(process.env.AGY_PATH)) return process.env.AGY_PATH;
+            const candidates = [
+              path.join(os.homedir(), ".local", "bin", "agy"),
+              "/usr/local/bin/agy",
+              "/opt/homebrew/bin/agy",
+            ];
+            for (const c of candidates) {
+              if (fs.existsSync(c)) return c;
+            }
+            return null;
+          };
+
           const getNodeBinary = (): string => {
             if (process.env.NODE && fs.existsSync(process.env.NODE)) return process.env.NODE;
             if (process.execPath.toLowerCase().endsWith("/node")) return process.execPath;
@@ -189,61 +202,114 @@ export class IpcController {
             return "node";
           };
 
+          const agyBin = getAgyBinary();
           const nodeCmd = getNodeBinary();
 
-          // 1. Spawning Head Chef Worker
+          // 1. Spawning Head Chef Worker (uses agy CLI if installed)
           try {
-            this.ptyManager.spawnAgent({
-              role: "headchef",
-              command: nodeCmd,
-              args: ["--experimental-strip-types", workerScript, "--role", "headchef", "--project", targetProjectDir, "--task", newTicket.title],
-              cwd: targetProjectDir,
-            });
+            if (agyBin) {
+              this.ptyManager.spawnAgent({
+                role: "headchef",
+                command: agyBin,
+                args: [
+                  "--dangerously-skip-permissions",
+                  "-p",
+                  `You are the Executive Head Chef of AgentGrid Kitchen. Formulate a master recipe_plan.md in this directory and outline the technical tasks for: "${newTicket.title}". Keep it concise and actionable.`,
+                ],
+                cwd: targetProjectDir,
+              });
+            } else {
+              this.ptyManager.spawnAgent({
+                role: "headchef",
+                command: nodeCmd,
+                args: ["--experimental-strip-types", workerScript, "--role", "headchef", "--project", targetProjectDir, "--task", newTicket.title],
+                cwd: targetProjectDir,
+              });
+            }
           } catch (e) {
             console.error("Failed to spawn headchef:", e);
           }
 
-          // 2. Automatically spawn Line Cook Worker
+          // 2. Automatically spawn Line Cook Worker (uses agy CLI)
           setTimeout(() => {
             try {
-              this.ptyManager.spawnAgent({
-                role: "linecook",
-                command: nodeCmd,
-                args: ["--experimental-strip-types", workerScript, "--role", "linecook", "--project", targetProjectDir, "--task", newTicket.title],
-                cwd: targetProjectDir,
-              });
+              if (agyBin) {
+                this.ptyManager.spawnAgent({
+                  role: "linecook",
+                  command: agyBin,
+                  args: [
+                    "--dangerously-skip-permissions",
+                    "-p",
+                    `You are the Line Cook (Full-Stack Developer) in AgentGrid Kitchen. Implement the core code and files for: "${newTicket.title}". Write clean, modern, production-ready files (e.g. index.html, styles, scripts) directly into this workspace now.`,
+                  ],
+                  cwd: targetProjectDir,
+                });
+              } else {
+                this.ptyManager.spawnAgent({
+                  role: "linecook",
+                  command: nodeCmd,
+                  args: ["--experimental-strip-types", workerScript, "--role", "linecook", "--project", targetProjectDir, "--task", newTicket.title],
+                  cwd: targetProjectDir,
+                });
+              }
             } catch (e) {
               console.error("Failed to spawn linecook:", e);
             }
-          }, 800);
+          }, 1200);
 
-          // 3. Automatically spawn Plating Chef Worker
+          // 3. Automatically spawn Plating Chef Worker (uses agy CLI)
           setTimeout(() => {
             try {
-              this.ptyManager.spawnAgent({
-                role: "plating",
-                command: nodeCmd,
-                args: ["--experimental-strip-types", workerScript, "--role", "plating", "--project", targetProjectDir, "--task", newTicket.title],
-                cwd: targetProjectDir,
-              });
+              if (agyBin) {
+                this.ptyManager.spawnAgent({
+                  role: "plating",
+                  command: agyBin,
+                  args: [
+                    "--dangerously-skip-permissions",
+                    "-p",
+                    `You are the Plating Chef (UI/UX Designer) in AgentGrid Kitchen. Review the visual styling, responsive layout, and presentation for: "${newTicket.title}". Refine CSS/styles if needed.`,
+                  ],
+                  cwd: targetProjectDir,
+                });
+              } else {
+                this.ptyManager.spawnAgent({
+                  role: "plating",
+                  command: nodeCmd,
+                  args: ["--experimental-strip-types", workerScript, "--role", "plating", "--project", targetProjectDir, "--task", newTicket.title],
+                  cwd: targetProjectDir,
+                });
+              }
             } catch (e) {
               console.error("Failed to spawn plating:", e);
             }
-          }, 1800);
+          }, 2400);
 
-          // 4. Automatically spawn Food Inspector Worker
+          // 4. Automatically spawn Food Inspector Worker (uses agy CLI)
           setTimeout(() => {
             try {
-              this.ptyManager.spawnAgent({
-                role: "inspector",
-                command: nodeCmd,
-                args: ["--experimental-strip-types", workerScript, "--role", "inspector", "--project", targetProjectDir, "--task", newTicket.title],
-                cwd: targetProjectDir,
-              });
+              if (agyBin) {
+                this.ptyManager.spawnAgent({
+                  role: "inspector",
+                  command: agyBin,
+                  args: [
+                    "--dangerously-skip-permissions",
+                    "-p",
+                    `You are the Food Inspector (QA). Review the files generated in this workspace for: "${newTicket.title}". Verify syntax, check for issues, and report your QA grade.`,
+                  ],
+                  cwd: targetProjectDir,
+                });
+              } else {
+                this.ptyManager.spawnAgent({
+                  role: "inspector",
+                  command: nodeCmd,
+                  args: ["--experimental-strip-types", workerScript, "--role", "inspector", "--project", targetProjectDir, "--task", newTicket.title],
+                  cwd: targetProjectDir,
+                });
+              }
             } catch (e) {
               console.error("Failed to spawn inspector:", e);
             }
-          }, 2600);
+          }, 3600);
 
           // 5. Flush router queue to deliver outbox messages to station inboxes
           try {

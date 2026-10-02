@@ -1,7 +1,24 @@
 import React, { useState, useRef, useEffect } from "react";
+import AnsiConverter from "ansi-to-html";
 import { useKitchenStore, type PassTab } from "../store/kitchenStore.ts";
 import { CHEF_TITLES } from "../../domain/constants/paths.constants.ts";
 import type { ChefRole } from "../../domain/types/hive.types.ts";
+
+const ansiConverter = new AnsiConverter({
+  fg: "#34d399",
+  bg: "#0b1019",
+  newline: true,
+  escapeXML: true,
+  colors: {
+    1: "#f87171",
+    2: "#4ade80",
+    3: "#fbbf24",
+    4: "#60a5fa",
+    5: "#c084fc",
+    6: "#38bdf8",
+    7: "#f1f5f9",
+  },
+});
 
 export const CommandCenter: React.FC = () => {
   const {
@@ -159,31 +176,43 @@ export const CommandCenter: React.FC = () => {
       <div className="flex-1 bg-[#141c28] overflow-hidden flex flex-col relative">
         {/* VIEW A: Real-Time Live Streaming Terminal */}
         {commandTab === "terminal" && (
-          <div
-            ref={terminalRef}
-            className="flex-1 p-3 font-mono text-[11px] text-emerald-400 bg-[#0b1019] overflow-y-auto whitespace-pre-wrap select-text leading-relaxed font-['Menlo','Monaco','Courier_New',monospace]"
-          >
-            {activeLog && activeLog.trim().length > 10 ? (
-              activeLog
-            ) : (
-              <div className="text-slate-500 space-y-2 select-none pt-2">
-                <div className="text-amber-400 font-bold">
-                  ╔═══════════════════════════════════════════════════════════════╗<br />
-                  ║           AGENTGRID KITCHEN — COMMAND PASS TERMINAL           ║<br />
-                  ║           Live Byte Stream • PTY Node Execution               ║<br />
-                  ╚═══════════════════════════════════════════════════════════════╝
-                </div>
-                <div className="text-slate-400 space-y-1 text-[11px]">
-                  <div>📁 Workspace : <span className={currentProject?.path ? "text-slate-200" : "text-amber-400 font-bold"}>{currentProject?.path || "⚠️ No folder chosen (Choose below)"}</span></div>
-                  <div>👨‍🍳 Brigade   : <span className="text-amber-400">{activeBrigadeChefs.length > 0 ? activeBrigadeChefs.join(", ") : "Standby"}</span></div>
-                  <div>⚡ Telemetry : <span className="text-emerald-400">/tmp/ag.sock (Online)</span></div>
-                </div>
-                <div className="pt-3 text-slate-500 text-[10px] leading-relaxed">
-                  💡 Type your order in the <span className="text-amber-300 font-bold">QUEUE</span> box below.<br />
-                  The Head Chef will formulate the plan, summon the agents to the floor, and stream execution live to this terminal.
-                </div>
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Terminal Engine Bar */}
+            <div className="bg-[#0f172a] px-3 py-1 border-b border-slate-800 flex items-center justify-between text-[10px] font-mono">
+              <div className="flex items-center space-x-2">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="text-slate-300">Engine: <span className="text-amber-400 font-bold">agy CLI</span> (Google Antigravity)</span>
               </div>
-            )}
+              <span className="text-slate-500">PTY Raw Byte Stream • ANSI Color Mode</span>
+            </div>
+
+            <div
+              ref={terminalRef}
+              className="flex-1 p-3 font-mono text-[11px] text-slate-200 bg-[#0b1019] overflow-y-auto select-text leading-relaxed font-['Menlo','Monaco','Courier_New',monospace]"
+            >
+              {activeLog && activeLog.trim().length > 10 ? (
+                <div dangerouslySetInnerHTML={{ __html: ansiConverter.toHtml(activeLog) }} />
+              ) : (
+                <div className="text-slate-500 space-y-2 select-none pt-2">
+                  <div className="text-amber-400 font-bold">
+                    ╔═══════════════════════════════════════════════════════════════╗<br />
+                    ║           AGENTGRID KITCHEN — COMMAND PASS TERMINAL           ║<br />
+                    ║           Powered by agy CLI • Live Process Stream            ║<br />
+                    ╚═══════════════════════════════════════════════════════════════╝
+                  </div>
+                  <div className="text-slate-400 space-y-1 text-[11px]">
+                    <div>📁 Workspace : <span className={currentProject?.path ? "text-slate-200" : "text-amber-400 font-bold"}>{currentProject?.path || "⚠️ No folder chosen (Choose below)"}</span></div>
+                    <div>🤖 CLI Engine: <span className="text-emerald-400 font-bold">/Users/gourav/.local/bin/agy</span></div>
+                    <div>👨‍🍳 Brigade   : <span className="text-amber-400">{activeBrigadeChefs.length > 0 ? activeBrigadeChefs.join(", ") : "Standby"}</span></div>
+                    <div>⚡ Telemetry : <span className="text-emerald-400">/tmp/ag.sock (Online)</span></div>
+                  </div>
+                  <div className="pt-3 text-slate-500 text-[10px] leading-relaxed">
+                    💡 Type your order in the <span className="text-amber-300 font-bold">QUEUE</span> box below.<br />
+                    The Head Chef will invoke the real <span className="text-amber-400 font-bold">agy CLI</span> to execute your tasks and stream real-time code generation to this terminal.
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
