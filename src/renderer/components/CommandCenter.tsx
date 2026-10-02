@@ -39,14 +39,63 @@ export const CommandCenter: React.FC = () => {
     hooks,
   } = useKitchenStore();
 
-  const [commandTab, setCommandTab] = useState<"terminal" | "chat" | "tasks" | "activity" | "plan">("terminal");
+  const [commandTab, setCommandTab] = useState<"terminal" | "chat" | "preview" | "memory" | "tasks" | "activity">("terminal");
   const [inputMessage, setInputMessage] = useState("");
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
+  const [previewTimestamp, setPreviewTimestamp] = useState<number>(Date.now());
+  const [previewUrl, setPreviewUrl] = useState<string>("http://127.0.0.1:5274");
+
+  // Memory ledger states
+  const [memoryFiles, setMemoryFiles] = useState<{ name: string; content: string }[]>([]);
+  const [selectedFileName, setSelectedFileName] = useState<string>("recipe_plan.md");
+  const [selectedFileContent, setSelectedFileContent] = useState<string>("");
+  const [isLoadingMemory, setIsLoadingMemory] = useState<boolean>(false);
+
   const terminalRef = useRef<HTMLDivElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
   const currentProject = projects.find((p) => p.id === activeProjectId) || projects[0];
   const activeLog = terminalLogs[activeTab] || "";
   const isHeadChefWorking = activeAgents.some((a) => a.role === "headchef" && a.status === "running");
+
+  const loadMemoryLedger = async () => {
+    setIsLoadingMemory(true);
+    const filesToTry = ["recipe_plan.md", "index.html", "styles.css", "script.js", "tickets.json", "package.json"];
+    const loaded: { name: string; content: string }[] = [];
+
+    if (typeof window !== "undefined" && window.agentgrid?.readFile) {
+      for (const fname of filesToTry) {
+        try {
+          const content = await window.agentgrid.readFile(fname);
+          if (content !== null && content !== undefined) {
+            loaded.push({ name: fname, content });
+          }
+        } catch {}
+      }
+    }
+
+    setMemoryFiles(loaded);
+    if (loaded.length > 0) {
+      const match = loaded.find((f) => f.name === selectedFileName) || loaded[0];
+      setSelectedFileName(match.name);
+      setSelectedFileContent(match.content);
+    } else {
+      setSelectedFileContent("# No files found in ledger yet.\n\nInstruct the Head Chef to cook your project files!");
+    }
+    setIsLoadingMemory(false);
+  };
+
+  useEffect(() => {
+    if (commandTab === "memory") {
+      loadMemoryLedger();
+    } else if (commandTab === "preview") {
+      if (typeof window !== "undefined" && window.agentgrid?.getPreviewUrl) {
+        window.agentgrid.getPreviewUrl(currentProject?.path).then((url) => {
+          if (url) setPreviewUrl(url);
+        });
+      }
+    }
+  }, [commandTab, activeProjectId]);
 
   useEffect(() => {
     if (terminalRef.current) {
@@ -117,7 +166,7 @@ export const CommandCenter: React.FC = () => {
           <div className="flex items-center space-x-1">
             <button
               onClick={() => setCommandTab("terminal")}
-              className={`px-2.5 py-1 rounded font-bold transition-all ${
+              className={`px-2 py-1 rounded font-bold transition-all ${
                 commandTab === "terminal" ? "bg-amber-500 text-slate-950 shadow" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
               }`}
             >
@@ -125,7 +174,7 @@ export const CommandCenter: React.FC = () => {
             </button>
             <button
               onClick={() => setCommandTab("chat")}
-              className={`px-2.5 py-1 rounded font-bold transition-all relative ${
+              className={`px-2 py-1 rounded font-bold transition-all relative ${
                 commandTab === "chat" ? "bg-amber-500 text-slate-950 shadow" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
               }`}
             >
@@ -137,8 +186,24 @@ export const CommandCenter: React.FC = () => {
               )}
             </button>
             <button
+              onClick={() => setCommandTab("preview")}
+              className={`px-2 py-1 rounded font-bold transition-all ${
+                commandTab === "preview" ? "bg-amber-500 text-slate-950 shadow" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+              }`}
+            >
+              🌐 preview
+            </button>
+            <button
+              onClick={() => setCommandTab("memory")}
+              className={`px-2 py-1 rounded font-bold transition-all ${
+                commandTab === "memory" ? "bg-amber-500 text-slate-950 shadow" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+              }`}
+            >
+              🧠 memory
+            </button>
+            <button
               onClick={() => setCommandTab("tasks")}
-              className={`px-2.5 py-1 rounded font-bold transition-all ${
+              className={`px-2 py-1 rounded font-bold transition-all ${
                 commandTab === "tasks" ? "bg-amber-500 text-slate-950 shadow" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
               }`}
             >
@@ -146,7 +211,7 @@ export const CommandCenter: React.FC = () => {
             </button>
             <button
               onClick={() => setCommandTab("activity")}
-              className={`px-2.5 py-1 rounded font-bold transition-all ${
+              className={`px-2 py-1 rounded font-bold transition-all ${
                 commandTab === "activity" ? "bg-amber-500 text-slate-950 shadow" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
               }`}
             >
@@ -310,6 +375,138 @@ export const CommandCenter: React.FC = () => {
                 </div>
               ))
             )}
+          </div>
+        )}
+
+        {/* VIEW E: Live In-App Dish / Website Preview */}
+        {commandTab === "preview" && (
+          <div className="flex-1 flex flex-col overflow-hidden bg-[#0b1019]">
+            {/* Browser Control Bar */}
+            <div className="bg-[#0f172a] px-3 py-1.5 border-b border-slate-800 flex items-center justify-between text-xs font-mono">
+              <div className="flex items-center space-x-2">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="text-slate-400 text-[11px] truncate max-w-[180px]">{previewUrl}</span>
+                <button
+                  onClick={() => setPreviewTimestamp(Date.now())}
+                  title="Hot Reload Preview"
+                  className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold rounded border border-slate-700 text-[10px] flex items-center space-x-1"
+                >
+                  <span>🔄</span>
+                  <span>Reload</span>
+                </button>
+                <button
+                  onClick={() => {
+                    if (typeof window !== "undefined" && window.agentgrid?.openExternal) {
+                      window.agentgrid.openExternal(previewUrl);
+                    }
+                  }}
+                  title="Open in System Browser"
+                  className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 text-[10px] flex items-center space-x-1"
+                >
+                  <span>🌐</span>
+                  <span>External</span>
+                </button>
+              </div>
+
+              {/* Responsive Device Switcher */}
+              <div className="flex items-center bg-slate-900 border border-slate-800 rounded p-0.5 space-x-0.5">
+                <button
+                  onClick={() => setPreviewDevice("desktop")}
+                  className={`px-2 py-0.5 rounded text-[10px] transition-all ${
+                    previewDevice === "desktop" ? "bg-amber-500 text-slate-950 font-bold shadow" : "text-slate-400 hover:text-slate-200"
+                  }`}
+                  title="Desktop (100% width)"
+                >
+                  🖥️ 100%
+                </button>
+                <button
+                  onClick={() => setPreviewDevice("tablet")}
+                  className={`px-2 py-0.5 rounded text-[10px] transition-all ${
+                    previewDevice === "tablet" ? "bg-amber-500 text-slate-950 font-bold shadow" : "text-slate-400 hover:text-slate-200"
+                  }`}
+                  title="Tablet (768px width)"
+                >
+                  📱 Tablet
+                </button>
+                <button
+                  onClick={() => setPreviewDevice("mobile")}
+                  className={`px-2 py-0.5 rounded text-[10px] transition-all ${
+                    previewDevice === "mobile" ? "bg-amber-500 text-slate-950 font-bold shadow" : "text-slate-400 hover:text-slate-200"
+                  }`}
+                  title="Mobile (375px width)"
+                >
+                  📱 Mobile
+                </button>
+              </div>
+            </div>
+
+            {/* Iframe Viewport Container */}
+            <div className="flex-1 overflow-auto p-2 flex items-center justify-center bg-[#070b12]">
+              <div
+                className={`h-full transition-all duration-300 flex flex-col bg-white overflow-hidden shadow-2xl ${
+                  previewDevice === "desktop"
+                    ? "w-full rounded-none"
+                    : previewDevice === "tablet"
+                    ? "w-[768px] max-w-full rounded-xl border-4 border-slate-700"
+                    : "w-[375px] max-w-full rounded-2xl border-4 border-slate-700"
+                }`}
+              >
+                <iframe
+                  key={previewTimestamp}
+                  src={`${previewUrl}/?t=${previewTimestamp}`}
+                  title="AgentGrid Dish Preview"
+                  className="w-full flex-1 border-none bg-white"
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* VIEW F: Memory Ledger & Master Recipe Plan */}
+        {commandTab === "memory" && (
+          <div className="flex-1 flex flex-col overflow-hidden bg-[#0b1019] text-xs font-mono">
+            {/* Memory Toolbar & File Chips */}
+            <div className="bg-[#0f172a] p-2 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center space-x-1.5 overflow-x-auto">
+                <span className="text-amber-400 font-bold text-[10px] mr-1 shrink-0">LEDGER:</span>
+                {memoryFiles.map((file) => (
+                  <button
+                    key={file.name}
+                    onClick={() => {
+                      setSelectedFileName(file.name);
+                      setSelectedFileContent(file.content);
+                    }}
+                    className={`px-2 py-0.5 rounded text-[10px] transition-all shrink-0 border ${
+                      selectedFileName === file.name
+                        ? "bg-amber-500/20 text-amber-300 border-amber-500 font-bold"
+                        : "bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200"
+                    }`}
+                  >
+                    📄 {file.name}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={loadMemoryLedger}
+                disabled={isLoadingMemory}
+                className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded border border-slate-700 text-[10px] shrink-0 font-bold"
+              >
+                🔄 Refresh
+              </button>
+            </div>
+
+            {/* File Viewer Content */}
+            <div className="flex-1 p-3 overflow-y-auto bg-[#0b1019] select-text">
+              <div className="text-[10px] text-slate-500 mb-2 flex items-center justify-between border-b border-slate-800/80 pb-1">
+                <span className="text-slate-400 font-bold">File: <span className="text-amber-400">{selectedFileName}</span></span>
+                <span>{selectedFileContent.split("\n").length} lines • {selectedFileContent.length} chars</span>
+              </div>
+              <pre className="text-slate-300 text-[11px] leading-relaxed whitespace-pre-wrap font-mono select-text bg-[#141c28] p-3 rounded-lg border border-slate-800">
+                {selectedFileContent}
+              </pre>
+            </div>
           </div>
         )}
       </div>

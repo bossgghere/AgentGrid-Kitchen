@@ -39,7 +39,7 @@ describe("Phase 4: Electron IPC Bridge & Controller Engine", () => {
       },
     };
 
-    new IpcController({
+    const ipcController = new IpcController({
       initializer,
       router,
       hookServer,
@@ -74,6 +74,20 @@ describe("Phase 4: Electron IPC Bridge & Controller Engine", () => {
     assert.strictEqual(tickets.length, 1);
     assert.strictEqual(tickets[0].title, "Bake Soufflé");
 
+    // Verify GET_PREVIEW_URL, READ_FILE, OPEN_EXTERNAL
+    assert.strictEqual(registeredHandlers.has(IPC_CHANNELS.GET_PREVIEW_URL), true);
+    const getPreviewHandler = registeredHandlers.get(IPC_CHANNELS.GET_PREVIEW_URL);
+    const previewUrl = await getPreviewHandler!({}, tempHiveDir);
+    assert.strictEqual(previewUrl, "http://127.0.0.1:5274");
+
+    assert.strictEqual(registeredHandlers.has(IPC_CHANNELS.READ_FILE), true);
+    const readFileHandler = registeredHandlers.get(IPC_CHANNELS.READ_FILE);
+    const ticketsContent = await readFileHandler!({}, path.join(tempHiveDir, "tickets.json"));
+    assert.strictEqual(ticketsContent !== null && ticketsContent.includes("Bake Soufflé"), true);
+
+    assert.strictEqual(registeredHandlers.has(IPC_CHANNELS.OPEN_EXTERNAL), true);
+
+    ipcController.closePreviewServer();
     fs.rmSync(tempHiveDir, { recursive: true, force: true });
   });
 

@@ -14,6 +14,9 @@ export const IPC_CHANNELS = {
   GET_TICKETS: "ag:get-tickets",
   CREATE_TICKET: "ag:create-ticket",
   SELECT_DIRECTORY: "ag:select-directory",
+  GET_PREVIEW_URL: "ag:get-preview-url",
+  OPEN_EXTERNAL: "ag:open-external",
+  READ_FILE: "ag:read-file",
   // Event Push Streams (Main -> Renderer)
   ON_PTY_DATA: "ag:on-pty-data",
   ON_STATUS_CHANGED: "ag:on-status-changed",
@@ -33,6 +36,9 @@ export interface AgentGridApi {
   getTickets: () => Promise<OrderTicket[]>;
   createTicket: (ticket: Omit<OrderTicket, "id" | "createdAt" | "updatedAt">) => Promise<OrderTicket>;
   selectDirectory: () => Promise<string | null>;
+  getPreviewUrl: (workspacePath?: string) => Promise<string>;
+  openExternal: (url: string) => Promise<void>;
+  readFile: (filePath: string) => Promise<string | null>;
   // Event Subscriptions
   onPtyData: (callback: (data: PtyDataEvent) => void) => () => void;
   onStatusChanged: (callback: (status: AgentStatusChangeEvent) => void) => () => void;

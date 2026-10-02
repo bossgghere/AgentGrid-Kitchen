@@ -1,5 +1,7 @@
 import fs from "fs";
 import path from "path";
+import os from "os";
+import http from "http";
 import { IPC_CHANNELS } from "../../shared/ipc.types.ts";
 import { HiveInitializer } from "../../application/initializer/HiveInitializer.ts";
 import { HiveRouter } from "../../application/router/HiveRouter.ts";
@@ -24,6 +26,9 @@ export class IpcController {
   private router: HiveRouter;
   private hookServer: HookServer;
   private ptyManager: PtyManager;
+  private previewServer: http.Server | null = null;
+  private activeWorkspacePath: string = "";
+  private readonly PREVIEW_PORT = 5274;
 
   constructor(options: IpcControllerOptions) {
     this.initializer = options.initializer;
@@ -171,6 +176,11 @@ export class IpcController {
             } else if (fs.existsSync(newTicket.description)) {
               targetProjectDir = newTicket.description;
             }
+          }
+
+          if (targetProjectDir && fs.existsSync(targetProjectDir)) {
+            this.activeWorkspacePath = targetProjectDir;
+            this.ensurePreviewServerRunning();
           }
 
           const workerScript = path.join(process.cwd(), "src", "application", "chefWorker.ts");
@@ -337,12 +347,211 @@ export class IpcController {
         if (result.canceled || result.filePaths.length === 0) {
           return null;
         }
-        return result.filePaths[0];
+        const chosen = result.filePaths[0];
+        this.activeWorkspacePath = chosen;
+        this.ensurePreviewServerRunning();
+        return chosen;
       } catch (err) {
         console.error("Failed to open directory dialog:", err);
         return null;
       }
     });
+
+    // 9. Get Live Dish Preview Server URL
+    ipcMain.handle(IPC_CHANNELS.GET_PREVIEW_URL, (_event, workspacePath?: string) => {
+      if (workspacePath && typeof workspacePath === "string" && fs.existsSync(workspacePath)) {
+        this.activeWorkspacePath = workspacePath;
+      }
+      this.ensurePreviewServerRunning();
+      return `http://127.0.0.1:${this.PREVIEW_PORT}`;
+    });
+
+    // 10. Open External Browser Link
+    ipcMain.handle(IPC_CHANNELS.OPEN_EXTERNAL, async (_event, url: string) => {
+      try {
+        const electron = await import("electron");
+        if (electron.shell?.openExternal) {
+          await electron.shell.openExternal(url);
+          return true;
+        }
+        return false;
+      } catch (err) {
+        console.error("Failed to open external url:", err);
+        return false;
+      }
+    });
+
+    // 11. Read Project Workspace File
+    ipcMain.handle(IPC_CHANNELS.READ_FILE, (_event, filePath: string) => {
+      try {
+        if (!filePath) return null;
+        let resolved = filePath;
+        if (!path.isAbsolute(resolved) && this.activeWorkspacePath) {
+          resolved = path.join(this.activeWorkspacePath, filePath);
+        }
+        if (fs.existsSync(resolved) && fs.statSync(resolved).isFile()) {
+          return fs.readFileSync(resolved, "utf-8");
+        }
+        // Fallback: check hive root
+        const hivePath = path.join(this.initializer.getHiveRoot(), filePath);
+        if (fs.existsSync(hivePath) && fs.statSync(hivePath).isFile()) {
+          return fs.readFileSync(hivePath, "utf-8");
+        }
+        return null;
+      } catch (err) {
+        console.error("Failed to read file:", err);
+        return null;
+      }
+    });
+  }
+
+  /**
+   * Starts the internal lightweight static HTTP preview server on port 5274
+   */
+  public ensurePreviewServerRunning(): void {
+    if (this.previewServer) return;
+
+    this.previewServer = http.createServer((req, res) => {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+
+      if (req.method === "OPTIONS") {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
+
+      if (!this.activeWorkspacePath || !fs.existsSync(this.activeWorkspacePath)) {
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        res.end(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AgentGrid Kitchen • Preview</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0b1019; color: #f1f5f9; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .card { background: #161f30; border: 1px solid #334155; padding: 36px 44px; border-radius: 12px; text-align: center; max-width: 480px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    h1 { color: #f59e0b; font-size: 22px; margin-bottom: 8px; }
+    p { color: #94a3b8; font-size: 13px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🍳 Kitchen Oven Warming Up</h1>
+    <p>Please select your project workspace directory in <strong>AgentGrid Kitchen</strong> to preview your live cooked application.</p>
+  </div>
+</body>
+</html>`);
+        return;
+      }
+
+      const rawUrl = req.url?.split("?")[0] || "/";
+      let requestedPath = decodeURIComponent(rawUrl);
+      if (requestedPath === "/" || requestedPath === "") {
+        requestedPath = "/index.html";
+      }
+
+      const filePath = path.normalize(path.join(this.activeWorkspacePath, requestedPath));
+
+      // Directory traversal prevention
+      if (!filePath.startsWith(path.normalize(this.activeWorkspacePath))) {
+        res.writeHead(403, { "Content-Type": "text/plain" });
+        res.end("403 Forbidden: Access denied.");
+        return;
+      }
+
+      if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+        const ext = path.extname(filePath).toLowerCase();
+        const mimeTypes: Record<string, string> = {
+          ".html": "text/html; charset=utf-8",
+          ".htm": "text/html; charset=utf-8",
+          ".css": "text/css; charset=utf-8",
+          ".js": "text/javascript; charset=utf-8",
+          ".mjs": "text/javascript; charset=utf-8",
+          ".json": "application/json; charset=utf-8",
+          ".svg": "image/svg+xml",
+          ".png": "image/png",
+          ".jpg": "image/jpeg",
+          ".jpeg": "image/jpeg",
+          ".gif": "image/gif",
+          ".webp": "image/webp",
+          ".ico": "image/x-icon",
+          ".woff": "font/woff",
+          ".woff2": "font/woff2",
+          ".ttf": "font/ttf",
+        };
+
+        res.writeHead(200, { "Content-Type": mimeTypes[ext] || "application/octet-stream" });
+        fs.createReadStream(filePath).pipe(res);
+        return;
+      }
+
+      // Check for index.html fallback
+      const indexPath = path.join(this.activeWorkspacePath, "index.html");
+      if (fs.existsSync(indexPath) && fs.statSync(indexPath).isFile()) {
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        fs.createReadStream(indexPath).pipe(res);
+        return;
+      }
+
+      // If index.html is not created yet, show auto-refreshing cooking placeholder
+      let files: string[] = [];
+      try {
+        files = fs.readdirSync(this.activeWorkspacePath).filter((f) => !f.startsWith("."));
+      } catch {}
+
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.end(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="refresh" content="2">
+  <title>AgentGrid Kitchen • Cooking...</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0b1019; color: #f1f5f9; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .card { background: #161f30; border: 1px solid #334155; padding: 36px 44px; border-radius: 12px; text-align: center; max-width: 520px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    h1 { color: #f59e0b; font-size: 20px; margin-bottom: 8px; }
+    p { color: #94a3b8; font-size: 13px; line-height: 1.6; }
+    .spinner { display: inline-block; width: 28px; height: 28px; border: 3px solid rgba(245, 158, 11, 0.2); border-top-color: #f59e0b; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .files { margin-top: 16px; text-align: left; background: #0b1019; border: 1px solid #1e293b; border-radius: 8px; padding: 10px 14px; font-family: monospace; font-size: 11px; color: #38bdf8; max-height: 140px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="spinner"></div>
+    <h1>🍳 Station Chefs Cooking Your Dish</h1>
+    <p>Waiting for <code>index.html</code> to be plated in your workspace...</p>
+    <p style="color: #64748b; font-size: 11px;">This preview automatically refreshes every 2 seconds when files are written.</p>
+    ${files.length > 0 ? `<div class="files"><strong>Workspace files (${files.length}):</strong><br/>${files.map((f) => "📄 " + f).join("<br/>")}</div>` : ""}
+  </div>
+</body>
+</html>`);
+    });
+
+    this.previewServer.on("error", (err: any) => {
+      if (err.code === "EADDRINUSE") {
+        console.warn(`[PreviewServer] Port ${this.PREVIEW_PORT} in use, preview server already active.`);
+      } else {
+        console.error("[PreviewServer] Error:", err);
+      }
+    });
+
+    try {
+      this.previewServer.listen(this.PREVIEW_PORT, "127.0.0.1", () => {
+        console.log(`[PreviewServer] Running on http://127.0.0.1:${this.PREVIEW_PORT}`);
+      });
+    } catch {}
+  }
+
+  public closePreviewServer(): void {
+    if (this.previewServer) {
+      try {
+        this.previewServer.close();
+      } catch {}
+      this.previewServer = null;
+    }
   }
 
   /**

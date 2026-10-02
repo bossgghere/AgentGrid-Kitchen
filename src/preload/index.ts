@@ -32,6 +32,15 @@ const api: AgentGridApi = {
   selectDirectory: () =>
     ipcRenderer.invoke(IPC_CHANNELS.SELECT_DIRECTORY),
 
+  getPreviewUrl: (workspacePath?: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.GET_PREVIEW_URL, workspacePath),
+
+  openExternal: (url: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.OPEN_EXTERNAL, url),
+
+  readFile: (filePath: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.READ_FILE, filePath),
+
   // Subscription listeners with cleanup functions
   onPtyData: (callback: (data: PtyDataEvent) => void) => {
     const subscription = (_event: unknown, data: PtyDataEvent) => callback(data);
