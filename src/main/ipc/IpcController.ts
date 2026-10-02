@@ -162,69 +162,74 @@ export class IpcController {
             }
           }
 
-          // 4. Stream real-time Terminal Logs to the Kitchen Pass
-          this.ptyManager.emit("ptyData", {
-            role: "headchef",
-            data: `\n👨‍🍳 [HEAD CHEF PASS] 🛎️ Guest Order Received: "${newTicket.title}"\n` +
-                  `   📝 Master Recipe Plan formulated in recipe_plan.md\n` +
-                  `   🎯 Station Decomposition:\n` +
-                  `      ├── 🍳 Line Cook: Backend & Database Logic\n` +
-                  `      ├── 🎨 Plating Chef: UI Presentation & Layout\n` +
-                  `      └── 🔍 Food Inspector: QA Review & Benchmark Tests\n` +
-                  `   📨 Dispatched 3 station orders into Hive Mailbox!\n`,
-          });
+          // 4. Extract Project Directory & Spawn Real Autonomous Station Workers
+          let targetProjectDir = process.cwd();
+          if (newTicket.description) {
+            const match = newTicket.description.match(/\[(.*?)\]/);
+            if (match && fs.existsSync(match[1])) {
+              targetProjectDir = match[1];
+            } else if (fs.existsSync(newTicket.description)) {
+              targetProjectDir = newTicket.description;
+            }
+          }
 
-          this.ptyManager.emit("ptyData", {
-            role: "linecook",
-            data: `\n🍳 [LINE COOK] 🔥 Station order received from Head Chef!\n` +
-                  `   Order: ${newTicket.title}\n` +
-                  `   Status: 🟢 Preheating stove. Cooking started...\n` +
-                  `   Command: Initializing backend architecture & service handlers.\n`,
-          });
+          const workerScript = path.join(process.cwd(), "src", "application", "chefWorker.ts");
 
-          this.ptyManager.emit("ptyData", {
-            role: "plating",
-            data: `\n🎨 [PLATING CHEF] 🎨 Ticket queued: "${newTicket.title}"\n` +
-                  `   Status: 🟡 Station armed. Ready to assemble UI presentation upon backend completion.\n`,
-          });
+          // 1. Spawning Head Chef Worker
+          try {
+            this.ptyManager.spawnAgent({
+              role: "headchef",
+              command: "node",
+              args: ["--experimental-strip-types", workerScript, "--role", "headchef", "--project", targetProjectDir, "--task", newTicket.title],
+              cwd: targetProjectDir,
+            });
+          } catch (e) {
+            console.error("Failed to spawn headchef:", e);
+          }
 
-          this.ptyManager.emit("ptyData", {
-            role: "inspector",
-            data: `\n🔍 [FOOD INSPECTOR] 📋 Inspection ticket registered: "${newTicket.title}"\n` +
-                  `   Status: 🟡 Station armed. Initialized QA review pipeline.\n`,
-          });
-
-          // 5. Update agent status badges
-          this.hookServer.emit("agentStatusChanged", {
-            agentRole: "headchef",
-            status: "working",
-            lastEvent: "PreToolUse",
-            currentTool: "RecipePlan",
-            timestamp: now,
-          });
-
-          this.hookServer.emit("agentStatusChanged", {
-            agentRole: "linecook",
-            status: "working",
-            lastEvent: "PreToolUse",
-            currentTool: "StoveCode",
-            timestamp: now,
-          });
-
-          // 6. Auto-spawn Line Cook process if not already running
-          if (!this.ptyManager.getAllActiveAgents().some((a) => a.role === "linecook")) {
+          // 2. Automatically spawn Line Cook Worker
+          setTimeout(() => {
             try {
               this.ptyManager.spawnAgent({
                 role: "linecook",
                 command: "node",
-                args: ["-e", `console.log("🍳 [Line Cook PTY Engine Online] Cooking order ticket: ${newTicket.title}..."); setInterval(() => {}, 1000);`],
+                args: ["--experimental-strip-types", workerScript, "--role", "linecook", "--project", targetProjectDir, "--task", newTicket.title],
+                cwd: targetProjectDir,
               });
-            } catch (err) {
-              // Non-blocking
+            } catch (e) {
+              console.error("Failed to spawn linecook:", e);
             }
-          }
+          }, 800);
 
-          // 7. Flush router queue immediately to deliver outbox messages to station inboxes
+          // 3. Automatically spawn Plating Chef Worker
+          setTimeout(() => {
+            try {
+              this.ptyManager.spawnAgent({
+                role: "plating",
+                command: "node",
+                args: ["--experimental-strip-types", workerScript, "--role", "plating", "--project", targetProjectDir, "--task", newTicket.title],
+                cwd: targetProjectDir,
+              });
+            } catch (e) {
+              console.error("Failed to spawn plating:", e);
+            }
+          }, 1800);
+
+          // 4. Automatically spawn Food Inspector Worker
+          setTimeout(() => {
+            try {
+              this.ptyManager.spawnAgent({
+                role: "inspector",
+                command: "node",
+                args: ["--experimental-strip-types", workerScript, "--role", "inspector", "--project", targetProjectDir, "--task", newTicket.title],
+                cwd: targetProjectDir,
+              });
+            } catch (e) {
+              console.error("Failed to spawn inspector:", e);
+            }
+          }, 2600);
+
+          // 5. Flush router queue to deliver outbox messages to station inboxes
           try {
             this.router.poll();
           } catch (err) {

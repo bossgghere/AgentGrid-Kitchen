@@ -4,8 +4,7 @@ import { CHEF_ROLES, CHEF_TITLES } from "../../domain/constants/paths.constants.
 import type { ChefRole } from "../../domain/types/hive.types.ts";
 
 export const KitchenPass: React.FC = () => {
-  const { activeTab, setActiveTab, terminalLogs, writeToAgent, activeAgents } = useKitchenStore();
-  const [inputText, setInputText] = useState("");
+  const { activeTab, setActiveTab, terminalLogs, activeAgents } = useKitchenStore();
   const terminalRef = useRef<HTMLDivElement>(null);
 
   const activeLog = terminalLogs[activeTab] || "";
@@ -17,13 +16,6 @@ export const KitchenPass: React.FC = () => {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
   }, [activeLog, activeTab]);
-
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputText.trim()) return;
-    await writeToAgent(activeTab, inputText + "\n");
-    setInputText("");
-  };
 
   return (
     <div className="flex flex-col h-full bg-slate-900 border border-slate-800 rounded-lg overflow-hidden shadow-xl">
@@ -68,29 +60,10 @@ export const KitchenPass: React.FC = () => {
       {/* Terminal Screen Body */}
       <div
         ref={terminalRef}
-        className="flex-1 p-4 font-mono text-xs bg-slate-950/90 text-emerald-400 overflow-y-auto whitespace-pre-wrap select-text border-b border-slate-800 leading-relaxed"
+        className="flex-1 p-4 font-mono text-xs bg-slate-950/90 text-emerald-400 overflow-y-auto whitespace-pre-wrap select-text leading-relaxed"
       >
         {activeLog}
       </div>
-
-      {/* Interactive Command Input Bar */}
-      <form onSubmit={handleSend} className="flex items-center px-3 py-2 bg-slate-950 space-x-2">
-        <span className="text-amber-500 font-bold text-xs">{activeTab} &gt;</span>
-        <input
-          type="text"
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          placeholder={isRunning ? "Type command to send to chef terminal..." : "Station online. Logs streaming live."}
-          className="flex-1 bg-slate-900 border border-slate-800 rounded px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-amber-500"
-        />
-        <button
-          type="submit"
-          disabled={!inputText.trim()}
-          className="px-3 py-1 bg-amber-600 hover:bg-amber-500 disabled:bg-slate-800 text-white font-bold text-xs rounded transition-colors"
-        >
-          Send
-        </button>
-      </form>
     </div>
   );
 };

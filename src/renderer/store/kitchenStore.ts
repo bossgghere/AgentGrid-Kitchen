@@ -55,11 +55,11 @@ export interface KitchenState {
 }
 
 const DEFAULT_LOGS: Record<ChefRole, string> = {
-  headchef: "👨‍🍳 [Head Chef Pass] Waiting for order tickets...\n",
-  plating: "🎨 [Plating Chef Station] Visual canvas ready.\n",
-  linecook: "👨‍🍳 [Line Cook Station] Code stove preheated.\n",
-  pantry: "📦 [Pantry Scout Station] Ingredients & docs ready.\n",
-  inspector: "🔍 [Food Inspector Station] QA testing bench initialized.\n",
+  headchef: "👨‍🍳 [HEAD CHEF PASS] Online & listening for executive orders from Chat.\n",
+  plating: "🎨 [PLATING CHEF STATION] Standing by for UI/UX dispatches.\n",
+  linecook: "🍳 [LINE COOK STATION] Code stove armed and ready.\n",
+  pantry: "📦 [PANTRY SCOUT STATION] Research bench standing by.\n",
+  inspector: "🔍 [FOOD INSPECTOR STATION] QA inspection bench standing by.\n",
 };
 
 // Pure TypeScript Store Implementation (Zero External Dependency Lock)
@@ -86,6 +86,18 @@ class ReactiveStore<T extends object> {
   };
 }
 
+const loadSavedProjects = (): ProjectItem[] => {
+  if (typeof window !== "undefined") {
+    try {
+      const saved = localStorage.getItem("ag_projects");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+  }
+  return [
+    { id: "proj-default", name: "AgentGrid-Kitchen", path: "/Users/gourav/Desktop/AgentGrid-Kitchen" },
+  ];
+};
+
 const storeInstance = new ReactiveStore<KitchenState>((set, get) => ({
   activeTab: "headchef",
   registry: {},
@@ -94,11 +106,8 @@ const storeInstance = new ReactiveStore<KitchenState>((set, get) => ({
   terminalLogs: { ...DEFAULT_LOGS },
   messages: [],
   hooks: [],
-  projects: [
-    { id: "proj-1", name: "Project 1", path: "/Users/gourav/Desktop/AgentGrid-Kitchen" },
-    { id: "proj-2", name: "Project 2", path: "/Users/gourav/Desktop" },
-  ],
-  activeProjectId: "proj-1",
+  projects: loadSavedProjects(),
+  activeProjectId: loadSavedProjects()[0].id,
   chatMessages: [
     {
       id: "welcome-1",
@@ -113,24 +122,35 @@ const storeInstance = new ReactiveStore<KitchenState>((set, get) => ({
   selectProject: (id) => set({ activeProjectId: id }),
 
   addProject: (name, folderPath) => {
+    const pPath = folderPath || "/Users/gourav/Desktop";
+    const pName = name.trim() || pPath.split("/").filter(Boolean).pop() || "Project";
     const newProj: ProjectItem = {
       id: `proj-${Date.now()}`,
-      name: name.trim() || `Project ${get().projects.length + 1}`,
-      path: folderPath || "/Users/gourav/Desktop",
+      name: pName,
+      path: pPath,
     };
-    set((state) => ({
-      projects: [...state.projects, newProj],
+    const updated = [...get().projects, newProj];
+    if (typeof window !== "undefined") {
+      try { localStorage.setItem("ag_projects", JSON.stringify(updated)); } catch {}
+    }
+    set({
+      projects: updated,
       activeProjectId: newProj.id,
-    }));
+    });
   },
 
   chooseDirectoryForProject: async (projectId) => {
     if (typeof window !== "undefined" && window.agentgrid?.selectDirectory) {
       const selected = await window.agentgrid.selectDirectory();
       if (selected) {
-        set((state) => ({
-          projects: state.projects.map((p) => (p.id === projectId ? { ...p, path: selected } : p)),
-        }));
+        const folderName = selected.split("/").filter(Boolean).pop() || "Project";
+        const updated = get().projects.map((p) =>
+          p.id === projectId ? { ...p, name: folderName, path: selected } : p
+        );
+        if (typeof window !== "undefined") {
+          try { localStorage.setItem("ag_projects", JSON.stringify(updated)); } catch {}
+        }
+        set({ projects: updated });
         return selected;
       }
     }
