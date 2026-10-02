@@ -8,7 +8,9 @@
     "node": ">=18"
   },
   "scripts": {
-    "start": "node --experimental-strip-types src/index.ts",
+    "start": "npx electron .",
+    "gui": "npx electron .",
+    "cli": "node --experimental-strip-types src/index.ts",
     "dev": "node --experimental-strip-types src/index.ts",
     "test": "node --experimental-strip-types --test tests/run-phase1-tests.ts tests/run-phase2-tests.ts tests/run-phase3-tests.ts tests/run-phase4-tests.ts tests/run-phase5-tests.ts tests/run-phase6-tests.ts",
     "build": "tsc"
@@ -26,6 +28,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
+    "electron": "^28.2.0",
     "typescript": "^5.3.3"
   }
 }

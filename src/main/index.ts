@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import path from "path";
-import fileUrl from "file-url";
+import url from "url";
 import { HiveInitializer } from "../application/initializer/HiveInitializer.ts";
 import { HiveRouter } from "../application/router/HiveRouter.ts";
 import { HookServer } from "../application/hooks/HookServer.ts";
@@ -37,7 +37,7 @@ async function createWindow() {
     title: "AgentGrid Kitchen — Executive Chef Dashboard",
     backgroundColor: "#020617",
     webPreferences: {
-      preload: path.join(__dirname, "../preload/index.js"),
+      preload: path.join(process.cwd(), "src", "preload", "index.ts"),
       contextIsolation: true,
       nodeIntegration: false,
     },
@@ -53,8 +53,8 @@ async function createWindow() {
     getMainWindow: () => mainWindow,
   });
 
-  const indexPath = path.join(__dirname, "../../index.html");
-  mainWindow.loadURL(fileUrl(indexPath));
+  const indexPath = path.join(process.cwd(), "index.html");
+  mainWindow.loadURL(url.pathToFileURL(indexPath).href);
 
   mainWindow.on("closed", () => {
     mainWindow = null;
