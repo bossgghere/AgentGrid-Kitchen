@@ -2,6 +2,24 @@ import type { ChefRole, HiveMessage, OrderTicket, BrigadeRegistry } from "../../
 import type { PtyProcessInfo, PtyDataEvent, PtySpawnOptions } from "../../domain/types/pty.types.ts";
 import type { AgentStatusChangeEvent, HookEventPayload } from "../../domain/types/hooks.types.ts";
 
+export interface ProjectItem {
+  id: string;
+  name: string;
+  path: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  sender: "user" | "headchef";
+  text: string;
+  timestamp: string;
+  plan?: {
+    linecook?: string;
+    plating?: string;
+    inspector?: string;
+  };
+}
+
 export interface KitchenState {
   activeTab: ChefRole;
   registry: Partial<BrigadeRegistry>;
@@ -10,9 +28,17 @@ export interface KitchenState {
   terminalLogs: Record<ChefRole, string>;
   messages: HiveMessage[];
   hooks: HookEventPayload[];
+  // Project & Chat state
+  projects: ProjectItem[];
+  activeProjectId: string;
+  chatMessages: ChatMessage[];
 
   // Actions
   setActiveTab: (tab: ChefRole) => void;
+  selectProject: (id: string) => void;
+  addProject: (name: string, folderPath?: string) => void;
+  chooseDirectoryForProject: (projectId: string) => Promise<string | null>;
+  sendChatMessage: (text: string) => Promise<void>;
   fetchRegistry: () => Promise<void>;
   fetchTickets: () => Promise<void>;
   fetchActiveAgents: () => Promise<void>;
@@ -68,8 +94,85 @@ const storeInstance = new ReactiveStore<KitchenState>((set, get) => ({
   terminalLogs: { ...DEFAULT_LOGS },
   messages: [],
   hooks: [],
+  projects: [
+    { id: "proj-1", name: "Project 1", path: "/Users/gourav/Desktop/AgentGrid-Kitchen" },
+    { id: "proj-2", name: "Project 2", path: "/Users/gourav/Desktop" },
+  ],
+  activeProjectId: "proj-1",
+  chatMessages: [
+    {
+      id: "welcome-1",
+      sender: "headchef",
+      text: "👨‍🍳 Bonjour, Executive Chef! I am your Head Chef Orchestrator. Select your project folder above and chat with me to order dishes, features, or fixes.",
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    },
+  ],
 
   setActiveTab: (tab) => set({ activeTab: tab }),
+
+  selectProject: (id) => set({ activeProjectId: id }),
+
+  addProject: (name, folderPath) => {
+    const newProj: ProjectItem = {
+      id: `proj-${Date.now()}`,
+      name: name.trim() || `Project ${get().projects.length + 1}`,
+      path: folderPath || "/Users/gourav/Desktop",
+    };
+    set((state) => ({
+      projects: [...state.projects, newProj],
+      activeProjectId: newProj.id,
+    }));
+  },
+
+  chooseDirectoryForProject: async (projectId) => {
+    if (typeof window !== "undefined" && window.agentgrid?.selectDirectory) {
+      const selected = await window.agentgrid.selectDirectory();
+      if (selected) {
+        set((state) => ({
+          projects: state.projects.map((p) => (p.id === projectId ? { ...p, path: selected } : p)),
+        }));
+        return selected;
+      }
+    }
+    return null;
+  },
+
+  sendChatMessage: async (text) => {
+    if (!text.trim()) return;
+    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const userMsg: ChatMessage = {
+      id: `chat-${Date.now()}-user`,
+      sender: "user",
+      text: text.trim(),
+      timestamp: now,
+    };
+
+    set((state) => ({ chatMessages: [...state.chatMessages, userMsg] }));
+
+    const currentProject = get().projects.find((p) => p.id === get().activeProjectId) || get().projects[0];
+
+    // Trigger autonomous Head Chef order decomposition
+    await get().createTicket({
+      title: text.trim(),
+      description: `Project: ${currentProject.name} [${currentProject.path}] — ${text.trim()}`,
+      assignee: "headchef",
+      status: "pending",
+    });
+
+    const chefReply: ChatMessage = {
+      id: `chat-${Date.now()}-chef`,
+      sender: "headchef",
+      text: `👨‍🍳 Yes, Chef! Order accepted for "${currentProject.name}". Master recipe plan written and brigade dispatched.`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      plan: {
+        linecook: `Backend & API logic in ${currentProject.path}`,
+        plating: `Frontend components & responsive UI`,
+        inspector: `QA review, test benchmarks & code inspection`,
+      },
+    };
+
+    set((state) => ({ chatMessages: [...state.chatMessages, chefReply] }));
+  },
 
   fetchRegistry: async () => {
     if (typeof window !== "undefined" && window.agentgrid) {

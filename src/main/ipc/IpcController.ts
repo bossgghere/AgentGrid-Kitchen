@@ -236,6 +236,26 @@ export class IpcController {
         return newTicket;
       }
     );
+
+    // 8. Select Project Workspace Directory (Native Dialog)
+    ipcMain.handle(IPC_CHANNELS.SELECT_DIRECTORY, async () => {
+      try {
+        const electron = await import("electron");
+        const dialog = electron.dialog;
+        const win = getMainWindow();
+        const result = await dialog.showOpenDialog(win as any, {
+          properties: ["openDirectory", "createDirectory"],
+          title: "Select Project Workspace Folder",
+        });
+        if (result.canceled || result.filePaths.length === 0) {
+          return null;
+        }
+        return result.filePaths[0];
+      } catch (err) {
+        console.error("Failed to open directory dialog:", err);
+        return null;
+      }
+    });
   }
 
   /**

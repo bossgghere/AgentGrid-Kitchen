@@ -29,6 +29,9 @@ const api: AgentGridApi = {
   createTicket: (ticket: Omit<OrderTicket, "id" | "createdAt" | "updatedAt">) =>
     ipcRenderer.invoke(IPC_CHANNELS.CREATE_TICKET, ticket),
 
+  selectDirectory: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.SELECT_DIRECTORY),
+
   // Subscription listeners with cleanup functions
   onPtyData: (callback: (data: PtyDataEvent) => void) => {
     const subscription = (_event: unknown, data: PtyDataEvent) => callback(data);

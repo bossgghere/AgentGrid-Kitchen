@@ -13,6 +13,7 @@ export const IPC_CHANNELS = {
   GET_REGISTRY: "ag:get-registry",
   GET_TICKETS: "ag:get-tickets",
   CREATE_TICKET: "ag:create-ticket",
+  SELECT_DIRECTORY: "ag:select-directory",
   // Event Push Streams (Main -> Renderer)
   ON_PTY_DATA: "ag:on-pty-data",
   ON_STATUS_CHANGED: "ag:on-status-changed",
@@ -31,6 +32,7 @@ export interface AgentGridApi {
   getRegistry: () => Promise<BrigadeRegistry>;
   getTickets: () => Promise<OrderTicket[]>;
   createTicket: (ticket: Omit<OrderTicket, "id" | "createdAt" | "updatedAt">) => Promise<OrderTicket>;
+  selectDirectory: () => Promise<string | null>;
   // Event Subscriptions
   onPtyData: (callback: (data: PtyDataEvent) => void) => () => void;
   onStatusChanged: (callback: (status: AgentStatusChangeEvent) => void) => () => void;
