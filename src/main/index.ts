@@ -37,7 +37,7 @@ async function createWindow() {
     title: "AgentGrid Kitchen — Executive Chef Dashboard",
     backgroundColor: "#020617",
     webPreferences: {
-      preload: path.join(process.cwd(), "src", "preload", "index.ts"),
+      preload: path.join(process.cwd(), "dist", "preload", "index.js"),
       contextIsolation: true,
       nodeIntegration: false,
     },

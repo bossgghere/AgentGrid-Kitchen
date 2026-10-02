@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import { IPC_CHANNELS, AgentGridApi } from "../shared/ipc.types.ts";
-import type { ChefRole, HiveMessage, OrderTicket, BrigadeRegistry } from "../domain/types/hive.types.ts";
+import type { ChefRole, HiveMessage, OrderTicket } from "../domain/types/hive.types.ts";
 import type { PtyProcessInfo, PtyDataEvent, PtySpawnOptions } from "../domain/types/pty.types.ts";
 import type { AgentStatusChangeEvent, HookEventPayload } from "../domain/types/hooks.types.ts";
 

@@ -3,32 +3,37 @@
   "version": "1.0.0",
   "description": "AgentGrid Kitchen — Autonomous Michelin Multi-Agent Desktop Suite",
   "type": "module",
-  "main": "src/main/index.ts",
+  "main": "dist/main/index.js",
   "engines": {
     "node": ">=18"
   },
   "scripts": {
-    "start": "npx electron .",
-    "gui": "npx electron .",
+    "start": "node build.js && electron .",
+    "gui": "node build.js && electron .",
     "cli": "node --experimental-strip-types src/index.ts",
     "dev": "node --experimental-strip-types src/index.ts",
     "test": "node --experimental-strip-types --test tests/run-phase1-tests.ts tests/run-phase2-tests.ts tests/run-phase3-tests.ts tests/run-phase4-tests.ts tests/run-phase5-tests.ts tests/run-phase6-tests.ts",
-    "build": "tsc"
+    "build": "node build.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.0",
     "@google/generative-ai": "^0.21.0",
     "@langchain/langgraph": "^0.2.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "better-sqlite3": "^11.3.0",
     "chalk": "^5.3.0",
     "chokidar": "^3.6.0",
     "dotenv": "^16.4.0",
+    "esbuild": "^0.28.2",
     "openai": "^4.67.0",
-    "ora": "^8.0.0"
+    "ora": "^8.0.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
-    "electron": "^28.2.0",
-    "typescript": "^5.3.3"
+    "electron": "^28.3.3",
+    "typescript": "^5.9.3"
   }
 }

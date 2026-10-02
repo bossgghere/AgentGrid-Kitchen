@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "fs";
 import path from "path";
 import os from "os";
-import { HiveInitializer } from "../../src/application/initializer/HiveInitializer.js";
-import { CHEF_ROLES } from "../../src/domain/constants/paths.constants.js";
+import { HiveInitializer } from "../../src/application/initializer/HiveInitializer.ts";
+import { CHEF_ROLES } from "../../src/domain/constants/paths.constants.ts";
 
 describe("HiveInitializer (Phase 1)", () => {
   let tempHiveDir: string;

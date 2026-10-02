@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "fs";
 import path from "path";
 import os from "os";
-import { HiveInitializer } from "../../src/application/initializer/HiveInitializer.js";
-import { HiveRouter } from "../../src/application/router/HiveRouter.js";
-import { HiveMessage } from "../../src/domain/types/hive.types.js";
+import { HiveInitializer } from "../../src/application/initializer/HiveInitializer.ts";
+import { HiveRouter } from "../../src/application/router/HiveRouter.ts";
+import { HiveMessage } from "../../src/domain/types/hive.types.ts";
 
 describe("HiveRouter (Phase 1)", () => {
   let tempHiveDir: string;

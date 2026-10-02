@@ -7,7 +7,6 @@ import type {
   AgentStatusChangeEvent,
   HookEventType,
 } from "../../domain/types/hooks.types.ts";
-import type { ChefRole } from "../../domain/types/hive.types.ts";
 
 export interface HookServerOptions {
   socketPath?: string;
