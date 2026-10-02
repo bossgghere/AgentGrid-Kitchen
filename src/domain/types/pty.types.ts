@@ -13,6 +13,7 @@ export interface PtySpawnOptions {
   env?: Record<string, string>;
   cols?: number;
   rows?: number;
+  interactive?: boolean;
 }
 
 /**

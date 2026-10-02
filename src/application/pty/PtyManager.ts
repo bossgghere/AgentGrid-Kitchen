@@ -2,6 +2,7 @@ import { spawn, ChildProcess } from "child_process";
 import EventEmitter from "events";
 import path from "path";
 import os from "os";
+import { createRequire } from "module";
 import { DEFAULT_SOCKET_PATH } from "../../domain/constants/socket.constants.ts";
 import { DEFAULT_HIVE_ROOT } from "../../domain/constants/paths.constants.ts";
 import type { ChefRole } from "../../domain/types/hive.types.ts";
@@ -12,9 +13,18 @@ import type {
   PtyExitEvent,
 } from "../../domain/types/pty.types.ts";
 
+const requireModule = typeof require !== "undefined" ? require : createRequire(import.meta.url);
+let nodePty: any = null;
+try {
+  nodePty = requireModule("node-pty");
+} catch {
+  // node-pty optional
+}
+
 interface ActiveProcess {
   info: PtyProcessInfo;
-  process: ChildProcess;
+  process?: ChildProcess;
+  ptyProcess?: any;
 }
 
 export class PtyManager extends EventEmitter {
@@ -41,9 +51,17 @@ export class PtyManager extends EventEmitter {
 
     const workingDir = cwd || path.join(this.defaultHiveRoot, "agents", role);
 
+    const augmentedPath = [
+      path.join(os.homedir(), ".local", "bin"),
+      "/opt/homebrew/bin",
+      "/usr/local/bin",
+      process.env.PATH || "",
+    ].filter(Boolean).join(":");
+
     // Inject system environment variables
     const processEnv = {
       ...process.env,
+      PATH: augmentedPath,
       ...env,
       HIVE_SOCK: this.defaultSocketPath,
       HIVE_ROOT: this.defaultHiveRoot,
@@ -52,6 +70,56 @@ export class PtyManager extends EventEmitter {
       TERM: "xterm-256color",
     };
 
+    // 1. Try spawning with node-pty if interactive session requested
+    let ptyProcess: any = null;
+    if (options.interactive && nodePty && typeof nodePty.spawn === "function") {
+      try {
+        ptyProcess = nodePty.spawn(command, args, {
+          name: "xterm-256color",
+          cols: options.cols || 100,
+          rows: options.rows || 30,
+          cwd: workingDir,
+          env: processEnv,
+        });
+      } catch (err) {
+        ptyProcess = null;
+      }
+    }
+
+    if (ptyProcess) {
+      const info: PtyProcessInfo = {
+        id: `pty-${role}-${Date.now()}`,
+        role,
+        pid: ptyProcess.pid || 0,
+        command: `${command} ${args.join(" ")}`.trim(),
+        status: "running",
+        startedAt: new Date().toISOString(),
+      };
+
+      const activeItem: ActiveProcess = { info, ptyProcess };
+      this.activeProcesses.set(role, activeItem);
+
+      ptyProcess.onData((data: string) => {
+        const dataEvent: PtyDataEvent = { role, data };
+        this.emit("ptyData", dataEvent);
+      });
+
+      ptyProcess.onExit(({ exitCode, signal }: { exitCode: number; signal?: number }) => {
+        info.status = "exited";
+        this.activeProcesses.delete(role);
+        const exitEvent: PtyExitEvent = {
+          role,
+          exitCode: exitCode ?? 0,
+          signal: signal ?? 0,
+        };
+        this.emit("ptyExit", exitEvent);
+      });
+
+      this.emit("ptySpawned", info);
+      return info;
+    }
+
+    // 2. Fallback to child_process.spawn
     const child = spawn(command, args, {
       cwd: workingDir,
       env: processEnv,
@@ -128,8 +196,27 @@ export class PtyManager extends EventEmitter {
       return false;
     }
 
-    active.process.stdin?.write(data);
-    return true;
+    if (active.ptyProcess) {
+      try {
+        active.ptyProcess.write(data);
+        return true;
+      } catch (err) {
+        console.error(`[PtyManager] Failed to write to PTY '${role}':`, err);
+        return false;
+      }
+    }
+
+    if (active.process) {
+      try {
+        active.process.stdin?.write(data);
+        return true;
+      } catch (err) {
+        console.error(`[PtyManager] Failed to write to process '${role}':`, err);
+        return false;
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -140,7 +227,11 @@ export class PtyManager extends EventEmitter {
     if (!active) return false;
 
     try {
-      active.process.kill("SIGTERM");
+      if (active.ptyProcess) {
+        active.ptyProcess.kill();
+      } else if (active.process) {
+        active.process.kill("SIGTERM");
+      }
       this.activeProcesses.delete(role);
       return true;
     } catch (err) {

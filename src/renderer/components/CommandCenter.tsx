@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import AnsiConverter from "ansi-to-html";
 import { useKitchenStore, type PassTab } from "../store/kitchenStore.ts";
+import { XtermTerminal } from "./XtermTerminal.tsx";
 import { CHEF_TITLES } from "../../domain/constants/paths.constants.ts";
 import type { ChefRole } from "../../domain/types/hive.types.ts";
 
@@ -123,6 +124,14 @@ export const CommandCenter: React.FC = () => {
     const msg = inputMessage;
     setInputMessage("");
     setCommandTab("terminal"); // Auto-switch to terminal to watch the execution live!
+
+    // If user typed a direct CLI command (e.g. 'agy ...', 'ls', 'npm'), forward straight to the real terminal PTY!
+    const isDirectCli = /^(agy|npm|npx|node|git|ls|cd|pwd|clear|echo|cat|touch|mkdir|python|python3)\b/i.test(msg.trim());
+    if (isDirectCli && typeof window !== "undefined" && window.agentgrid?.writeToAgent) {
+      window.agentgrid.writeToAgent("headchef", `${msg.trim()}\n`);
+      return;
+    }
+
     await sendChatMessage(msg);
   };
 
@@ -251,33 +260,7 @@ export const CommandCenter: React.FC = () => {
               <span className="text-slate-500">PTY Raw Byte Stream • ANSI Color Mode</span>
             </div>
 
-            <div
-              ref={terminalRef}
-              className="flex-1 p-3 font-mono text-[11px] text-slate-200 bg-[#0b1019] overflow-y-auto select-text leading-relaxed font-['Menlo','Monaco','Courier_New',monospace]"
-            >
-              {activeLog && activeLog.trim().length > 10 ? (
-                <div dangerouslySetInnerHTML={{ __html: ansiConverter.toHtml(activeLog) }} />
-              ) : (
-                <div className="text-slate-500 space-y-2 select-none pt-2">
-                  <div className="text-amber-400 font-bold">
-                    ╔═══════════════════════════════════════════════════════════════╗<br />
-                    ║           AGENTGRID KITCHEN — COMMAND PASS TERMINAL           ║<br />
-                    ║           Powered by agy CLI • Live Process Stream            ║<br />
-                    ╚═══════════════════════════════════════════════════════════════╝
-                  </div>
-                  <div className="text-slate-400 space-y-1 text-[11px]">
-                    <div>📁 Workspace : <span className={currentProject?.path ? "text-slate-200" : "text-amber-400 font-bold"}>{currentProject?.path || "⚠️ No folder chosen (Choose below)"}</span></div>
-                    <div>🤖 CLI Engine: <span className="text-emerald-400 font-bold">/Users/gourav/.local/bin/agy</span></div>
-                    <div>👨‍🍳 Brigade   : <span className="text-amber-400">{activeBrigadeChefs.length > 0 ? activeBrigadeChefs.join(", ") : "Standby"}</span></div>
-                    <div>⚡ Telemetry : <span className="text-emerald-400">/tmp/ag.sock (Online)</span></div>
-                  </div>
-                  <div className="pt-3 text-slate-500 text-[10px] leading-relaxed">
-                    💡 Type your order in the <span className="text-amber-300 font-bold">QUEUE</span> box below.<br />
-                    The Head Chef will invoke the real <span className="text-amber-400 font-bold">agy CLI</span> to execute your tasks and stream real-time code generation to this terminal.
-                  </div>
-                </div>
-              )}
-            </div>
+            <XtermTerminal activeRole={activeTab} currentWorkspacePath={currentProject?.path} />
           </div>
         )}
 

@@ -10,6 +10,10 @@ for (const dir of dirs) {
   }
 }
 
+if (fs.existsSync("node_modules/xterm/css/xterm.css")) {
+  fs.copyFileSync("node_modules/xterm/css/xterm.css", "dist/renderer/xterm.css");
+}
+
 const nodeBrowserStubPlugin = {
   name: "node-browser-stub",
   setup(build) {
