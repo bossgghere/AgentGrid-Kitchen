@@ -6,11 +6,13 @@ import type { PassTab } from "../store/kitchenStore.ts";
 interface XtermTerminalProps {
   activeRole: PassTab;
   currentWorkspacePath?: string;
+  fontSize?: number;
 }
 
 export const XtermTerminal: React.FC<XtermTerminalProps> = ({
   activeRole,
   currentWorkspacePath,
+  fontSize = 12,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
@@ -19,33 +21,33 @@ export const XtermTerminal: React.FC<XtermTerminalProps> = ({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // 1. Initialize high-performance xterm.js instance
+    // 1. Initialize high-performance xterm.js instance with exact Munder Difflin cream palette
     const term = new Terminal({
       cursorBlink: true,
       cursorStyle: "block",
-      fontSize: 12,
+      fontSize: fontSize,
       lineHeight: 1.25,
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
       theme: {
-        background: "#0b1019",
-        foreground: "#34d399",
+        background: "#fffdfa",
+        foreground: "#18181b",
         cursor: "#f59e0b",
         selectionBackground: "rgba(245, 158, 11, 0.35)",
-        black: "#0b1019",
-        red: "#f87171",
-        green: "#4ade80",
-        yellow: "#fbbf24",
-        blue: "#60a5fa",
-        magenta: "#c084fc",
-        cyan: "#38bdf8",
-        white: "#f1f5f9",
+        black: "#18181b",
+        red: "#dc2626",
+        green: "#16a34a",
+        yellow: "#d97706",
+        blue: "#2563eb",
+        magenta: "#9333ea",
+        cyan: "#0284c7",
+        white: "#f8fafc",
         brightBlack: "#475569",
-        brightRed: "#fca5a5",
-        brightGreen: "#86efac",
-        brightYellow: "#fde047",
-        brightBlue: "#93c5fd",
-        brightMagenta: "#d8b4fe",
-        brightCyan: "#7dd3fc",
+        brightRed: "#ef4444",
+        brightGreen: "#22c55e",
+        brightYellow: "#eab308",
+        brightBlue: "#3b82f6",
+        brightMagenta: "#a855f7",
+        brightCyan: "#0ea5e9",
         brightWhite: "#ffffff",
       },
       convertEol: true,
@@ -57,7 +59,6 @@ export const XtermTerminal: React.FC<XtermTerminalProps> = ({
     term.loadAddon(fitAddon);
     term.open(containerRef.current);
 
-    // Initial fit
     setTimeout(() => {
       try {
         fitAddon.fit();
@@ -93,17 +94,16 @@ export const XtermTerminal: React.FC<XtermTerminalProps> = ({
     };
     window.addEventListener("resize", handleResize);
 
-    // Initial terminal greeting banner
-    term.writeln("\x1b[38;2;245;158;11m╔═══════════════════════════════════════════════════════════════════════════════╗\x1b[0m");
-    term.writeln("\x1b[38;2;245;158;11m║              AGENTGRID KITCHEN — REAL PTY INTERACTIVE TERMINAL                ║\x1b[0m");
-    term.writeln("\x1b[38;2;245;158;11m║        Connected to agy CLI • Direct Keystroke Piping • ANSI Color Mode       ║\x1b[0m");
-    term.writeln("\x1b[38;2;245;158;11m╚═══════════════════════════════════════════════════════════════════════════════╝\x1b[0m\r\n");
+    // Initial greeting line matching Munder Difflin
+    term.writeln("\x1b[1m> Let's ask each of the agents what are they up to. In short,\x1b[0m");
+    term.writeln("\x1b[90m• On it — sending each of the agents a status query.\x1b[0m");
+    term.writeln("\x1b[32mRan 1 shell command\x1b[0m");
     if (currentWorkspacePath) {
-      term.writeln(`\x1b[90m📁 Workspace:\x1b[0m \x1b[38;2;56;189;248m${currentWorkspacePath}\x1b[0m`);
+      term.writeln(`\x1b[90m• Target Workspace:\x1b[0m \x1b[34m${currentWorkspacePath}\x1b[0m`);
     } else {
-      term.writeln("\x1b[33m⚠️ No folder selected yet. Choose folder below before instructing Head Chef.\x1b[0m");
+      term.writeln("\x1b[33m• Workspace: Standby (select folder below)\x1b[0m");
     }
-    term.writeln("\x1b[90m💡 Type prompts into the QUEUE box below or interact directly with the PTY.\x1b[0m\r\n");
+    term.writeln("\x1b[90m* Ready for guest orders in QUEUE\x1b[0m\r\n");
 
     // 5. Auto-spawn interactive shell in workspace if not already running
     if (typeof window !== "undefined" && window.agentgrid?.getActiveAgents && currentWorkspacePath) {
@@ -128,12 +128,12 @@ export const XtermTerminal: React.FC<XtermTerminalProps> = ({
       term.dispose();
       termRef.current = null;
     };
-  }, [activeRole, currentWorkspacePath]);
+  }, [activeRole, currentWorkspacePath, fontSize]);
 
   return (
     <div
       ref={containerRef}
-      className="flex-1 w-full h-full bg-[#0b1019] p-2 overflow-hidden select-text"
+      className="flex-1 w-full h-full bg-[#fffdfa] p-2 overflow-hidden select-text cursor-text"
       onClick={() => termRef.current?.focus()}
     />
   );
