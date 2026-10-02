@@ -124,14 +124,25 @@ export const ChefChatPanel: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. Interactive Head Chef Chat Stream */}
+      {/* 2. Interactive Brigade Chat Stream */}
       <div ref={chatScrollRef} className="flex-1 p-3 overflow-y-auto space-y-3 bg-slate-950/60">
         {chatMessages.map((msg) => {
           const isUser = msg.sender === "user";
+          const senderInfo = {
+            user: { name: "You", icon: "👤", badgeColor: "text-slate-400", border: "border-amber-600" },
+            headchef: { name: "Head Chef", icon: "👨‍🍳", badgeColor: "text-amber-400", border: "border-slate-800" },
+            linecook: { name: "Line Cook", icon: "🍳", badgeColor: "text-sky-400", border: "border-sky-900/60" },
+            plating: { name: "Plating Chef", icon: "🎨", badgeColor: "text-emerald-400", border: "border-emerald-900/60" },
+            inspector: { name: "Food Inspector", icon: "🔍", badgeColor: "text-purple-400", border: "border-purple-900/60" },
+            pantry: { name: "Pantry Scout", icon: "📦", badgeColor: "text-amber-300", border: "border-amber-900/60" },
+          }[msg.sender] || { name: "Brigade Chef", icon: "🧑‍🍳", badgeColor: "text-slate-400", border: "border-slate-800" };
+
           return (
             <div key={msg.id} className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}>
-              <div className="flex items-center space-x-1 text-[10px] text-slate-500 mb-0.5 px-1">
-                <span>{isUser ? "You" : "👨‍🍳 Head Chef"}</span>
+              <div className="flex items-center space-x-1.5 text-[10px] text-slate-500 mb-0.5 px-1">
+                <span className={`font-bold ${senderInfo.badgeColor}`}>
+                  {senderInfo.icon} {senderInfo.name}
+                </span>
                 <span>•</span>
                 <span>{msg.timestamp}</span>
               </div>
@@ -140,7 +151,7 @@ export const ChefChatPanel: React.FC = () => {
                 className={`max-w-[92%] p-2.5 rounded-lg text-xs leading-relaxed ${
                   isUser
                     ? "bg-amber-600 text-slate-950 font-medium rounded-tr-none shadow-md"
-                    : "bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none shadow-md"
+                    : `bg-slate-900 border ${senderInfo.border} text-slate-200 rounded-tl-none shadow-md`
                 }`}
               >
                 <div>{msg.text}</div>

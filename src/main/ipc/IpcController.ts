@@ -175,11 +175,27 @@ export class IpcController {
 
           const workerScript = path.join(process.cwd(), "src", "application", "chefWorker.ts");
 
+          const getNodeBinary = (): string => {
+            if (process.env.NODE && fs.existsSync(process.env.NODE)) return process.env.NODE;
+            if (process.execPath.toLowerCase().endsWith("/node")) return process.execPath;
+            const candidates = [
+              "/Users/gourav/.nvm/versions/node/v24.13.0/bin/node",
+              "/usr/local/bin/node",
+              "/opt/homebrew/bin/node",
+            ];
+            for (const c of candidates) {
+              if (fs.existsSync(c)) return c;
+            }
+            return "node";
+          };
+
+          const nodeCmd = getNodeBinary();
+
           // 1. Spawning Head Chef Worker
           try {
             this.ptyManager.spawnAgent({
               role: "headchef",
-              command: "node",
+              command: nodeCmd,
               args: ["--experimental-strip-types", workerScript, "--role", "headchef", "--project", targetProjectDir, "--task", newTicket.title],
               cwd: targetProjectDir,
             });
@@ -192,7 +208,7 @@ export class IpcController {
             try {
               this.ptyManager.spawnAgent({
                 role: "linecook",
-                command: "node",
+                command: nodeCmd,
                 args: ["--experimental-strip-types", workerScript, "--role", "linecook", "--project", targetProjectDir, "--task", newTicket.title],
                 cwd: targetProjectDir,
               });
@@ -206,7 +222,7 @@ export class IpcController {
             try {
               this.ptyManager.spawnAgent({
                 role: "plating",
-                command: "node",
+                command: nodeCmd,
                 args: ["--experimental-strip-types", workerScript, "--role", "plating", "--project", targetProjectDir, "--task", newTicket.title],
                 cwd: targetProjectDir,
               });
@@ -220,7 +236,7 @@ export class IpcController {
             try {
               this.ptyManager.spawnAgent({
                 role: "inspector",
-                command: "node",
+                command: nodeCmd,
                 args: ["--experimental-strip-types", workerScript, "--role", "inspector", "--project", targetProjectDir, "--task", newTicket.title],
                 cwd: targetProjectDir,
               });

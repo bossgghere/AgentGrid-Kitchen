@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from "react";
-import { useKitchenStore } from "../store/kitchenStore.ts";
-import { CHEF_ROLES, CHEF_TITLES } from "../../domain/constants/paths.constants.ts";
+import React, { useRef, useEffect } from "react";
+import { useKitchenStore, type PassTab } from "../store/kitchenStore.ts";
+import { CHEF_TITLES } from "../../domain/constants/paths.constants.ts";
 import type { ChefRole } from "../../domain/types/hive.types.ts";
 
 export const KitchenPass: React.FC = () => {
@@ -18,12 +18,13 @@ export const KitchenPass: React.FC = () => {
   const currentProject = projects.find((p) => p.id === activeProjectId) || projects[0];
   const activeLog = terminalLogs[activeTab] || "";
   const currentProcess = activeAgents.find((a) => a.role === activeTab && a.status === "running");
-  const isRunning = Boolean(currentProcess);
+  const isRunning = Boolean(currentProcess) || activeAgents.some((a) => a.status === "running");
 
-  // Tabs only show for actively summoned chefs (or headchef if none yet)
-  const visibleRoles: ChefRole[] = activeBrigadeChefs.length > 0
-    ? activeBrigadeChefs
-    : ["headchef"];
+  // Tabs: Always show "🌟 Master Pass", followed by summoned chefs
+  const visibleTabs: PassTab[] = [
+    "master",
+    ...(activeBrigadeChefs.length > 0 ? activeBrigadeChefs : (["headchef"] as ChefRole[])),
+  ];
 
   useEffect(() => {
     if (terminalRef.current) {
@@ -36,20 +37,22 @@ export const KitchenPass: React.FC = () => {
       {/* Header Tabs */}
       <div className="flex items-center justify-between bg-slate-950 px-2 py-1.5 border-b border-slate-800 overflow-x-auto">
         <div className="flex items-center space-x-1">
-          {visibleRoles.map((role) => {
-            const isActive = activeTab === role;
-            const proc = activeAgents.find((a) => a.role === role && a.status === "running");
+          {visibleTabs.map((tab) => {
+            const isActive = activeTab === tab;
+            const proc = tab !== "master" ? activeAgents.find((a) => a.role === tab && a.status === "running") : null;
+            const tabTitle = tab === "master" ? "🌟 Master Pass (Live Feed)" : CHEF_TITLES[tab as ChefRole];
+
             return (
               <button
-                key={role}
-                onClick={() => setActiveTab(role)}
+                key={tab}
+                onClick={() => setActiveTab(tab)}
                 className={`flex items-center space-x-1.5 px-3 py-1 rounded-t-md text-xs font-semibold transition-all ${
                   isActive
                     ? "bg-slate-900 text-amber-400 border-t-2 border-amber-500 shadow-sm"
                     : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/50"
                 }`}
               >
-                <span>{CHEF_TITLES[role]}</span>
+                <span>{tabTitle}</span>
                 {proc && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>}
               </button>
             );
@@ -64,11 +67,11 @@ export const KitchenPass: React.FC = () => {
           {isRunning ? (
             <span className="flex items-center space-x-1 text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/40">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>PID: {currentProcess?.pid}</span>
+              <span>ACTIVE DISH</span>
             </span>
           ) : (
             <span className="text-slate-500 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
-              Ready
+              Pass Ready
             </span>
           )}
         </div>

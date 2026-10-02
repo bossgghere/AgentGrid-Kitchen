@@ -85,6 +85,16 @@ export class PtyManager extends EventEmitter {
       this.emit("ptyData", dataEvent);
     });
 
+    // Handle spawn error (e.g. command not found)
+    child.on("error", (err: Error) => {
+      const errMsg = `\n❌ [PtyManager Error] Failed to execute ${command}: ${err.message}\n`;
+      const dataEvent: PtyDataEvent = { role, data: errMsg };
+      this.emit("ptyData", dataEvent);
+      info.status = "exited";
+      this.activeProcesses.delete(role);
+      this.emit("ptyExit", { role, exitCode: 1, signal: 0 });
+    });
+
     // Handle process termination
     child.on("close", (exitCode: number | null, signal: NodeJS.Signals | null) => {
       info.status = "exited";
