@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { DEFAULT_HIVE_ROOT, CHEF_ROLES, CHEF_TITLES } from "../../domain/constants/paths.constants.ts";
+import { CHEF_SYSTEM_PROMPTS } from "../../domain/prompts/prompts.constants.ts";
 import type { BrigadeRegistry, ChefRole } from "../../domain/types/hive.types.ts";
 
 export class HiveInitializer {
@@ -36,7 +37,7 @@ export class HiveInitializer {
       if (!fs.existsSync(identityFile)) {
         fs.writeFileSync(
           identityFile,
-          `# ${CHEF_TITLES[role]}\nRole: ${role}\nStatus: Active\n`
+          CHEF_SYSTEM_PROMPTS[role] || `# ${CHEF_TITLES[role]}\nRole: ${role}\n`
         );
       }
 
