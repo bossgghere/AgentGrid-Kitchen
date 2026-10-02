@@ -1,17 +1,17 @@
 {
-  "name": "agentgrid-backend",
-  "version": "0.1.0",
-  "description": "AgentGrid Backend Engine — Restaurant Kitchen Brigade Architecture",
+  "name": "agentgrid-kitchen",
+  "version": "1.0.0",
+  "description": "AgentGrid Kitchen — Autonomous Michelin Multi-Agent Desktop Suite",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "src/main/index.ts",
   "engines": {
     "node": ">=18"
   },
   "scripts": {
-    "start": "node dist/index.js",
-    "dev": "tsx src/index.ts",
-    "build": "tsc",
-    "test": "vitest run"
+    "start": "node --experimental-strip-types src/index.ts",
+    "dev": "node --experimental-strip-types src/index.ts",
+    "test": "node --experimental-strip-types --test tests/run-phase1-tests.ts tests/run-phase2-tests.ts tests/run-phase3-tests.ts tests/run-phase4-tests.ts tests/run-phase5-tests.ts tests/run-phase6-tests.ts",
+    "build": "tsc"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.0",
@@ -26,8 +26,6 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
-    "tsx": "^4.7.0",
-    "typescript": "^5.3.3",
-    "vitest": "^1.2.0"
+    "typescript": "^5.3.3"
   }
 }
