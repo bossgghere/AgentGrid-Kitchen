@@ -58,26 +58,21 @@ export const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Main 3-Column Dashboard Body */}
-      <main className="flex-1 grid grid-cols-12 gap-3 p-3 overflow-hidden">
-        {/* Left Column: Kitchen Roster (3 cols) */}
-        <div className="col-span-3 h-full overflow-hidden">
-          <KitchenRoster />
-        </div>
-
-        {/* Center Column: Kitchen Pass Terminal (6 cols) */}
-        <div className="col-span-6 h-full overflow-hidden">
+      {/* Main Workspace: Kitchen Pass Terminal (7 cols) + Order Ticket Board & Inbox (5 cols) */}
+      <main className="flex-1 grid grid-cols-12 gap-3 px-3 pt-3 pb-1.5 overflow-hidden">
+        {/* Left Column: Kitchen Pass Terminal (7 cols) */}
+        <div className="col-span-7 h-full overflow-hidden">
           <KitchenPass />
         </div>
 
-        {/* Right Column: Order Ticket Board & Inbox (3 cols) */}
-        <div className="col-span-3 flex flex-col h-full space-y-3 overflow-hidden">
+        {/* Right Column: Order Ticket Board & Inbox (5 cols) */}
+        <div className="col-span-5 flex flex-col h-full space-y-2.5 overflow-hidden">
           <div className="flex-1 overflow-hidden">
             <OrderTicketBoard />
           </div>
 
           {/* Comms Inbox */}
-          <div className="h-40 bg-slate-900 border border-slate-800 rounded-lg p-3 flex flex-col overflow-hidden">
+          <div className="h-36 bg-slate-900 border border-slate-800 rounded-lg p-2.5 flex flex-col overflow-hidden">
             <h3 className="text-xs font-bold text-slate-200 mb-1">🔔 Service Bell Dispatches</h3>
             <div className="flex-1 overflow-y-auto space-y-1.5 text-[10px]">
               {messages.length === 0 ? (
@@ -96,6 +91,11 @@ export const App: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {/* Bottom Long Horizontal Section: Kitchen Brigade Roster */}
+      <section className="px-3 pb-3 pt-1 shrink-0">
+        <KitchenRoster />
+      </section>
     </div>
   );
 };
