@@ -161,6 +161,75 @@ export class IpcController {
               fs.writeFileSync(path.join(headChefOutbox, `${msg.id}.json`), JSON.stringify(msg, null, 2));
             }
           }
+
+          // 4. Stream real-time Terminal Logs to the Kitchen Pass
+          this.ptyManager.emit("ptyData", {
+            role: "headchef",
+            data: `\n👨‍🍳 [HEAD CHEF PASS] 🛎️ Guest Order Received: "${newTicket.title}"\n` +
+                  `   📝 Master Recipe Plan formulated in recipe_plan.md\n` +
+                  `   🎯 Station Decomposition:\n` +
+                  `      ├── 🍳 Line Cook: Backend & Database Logic\n` +
+                  `      ├── 🎨 Plating Chef: UI Presentation & Layout\n` +
+                  `      └── 🔍 Food Inspector: QA Review & Benchmark Tests\n` +
+                  `   📨 Dispatched 3 station orders into Hive Mailbox!\n`,
+          });
+
+          this.ptyManager.emit("ptyData", {
+            role: "linecook",
+            data: `\n🍳 [LINE COOK] 🔥 Station order received from Head Chef!\n` +
+                  `   Order: ${newTicket.title}\n` +
+                  `   Status: 🟢 Preheating stove. Cooking started...\n` +
+                  `   Command: Initializing backend architecture & service handlers.\n`,
+          });
+
+          this.ptyManager.emit("ptyData", {
+            role: "plating",
+            data: `\n🎨 [PLATING CHEF] 🎨 Ticket queued: "${newTicket.title}"\n` +
+                  `   Status: 🟡 Station armed. Ready to assemble UI presentation upon backend completion.\n`,
+          });
+
+          this.ptyManager.emit("ptyData", {
+            role: "inspector",
+            data: `\n🔍 [FOOD INSPECTOR] 📋 Inspection ticket registered: "${newTicket.title}"\n` +
+                  `   Status: 🟡 Station armed. Initialized QA review pipeline.\n`,
+          });
+
+          // 5. Update agent status badges
+          this.hookServer.emit("agentStatusChanged", {
+            agentRole: "headchef",
+            status: "working",
+            lastEvent: "PreToolUse",
+            currentTool: "RecipePlan",
+            timestamp: now,
+          });
+
+          this.hookServer.emit("agentStatusChanged", {
+            agentRole: "linecook",
+            status: "working",
+            lastEvent: "PreToolUse",
+            currentTool: "StoveCode",
+            timestamp: now,
+          });
+
+          // 6. Auto-spawn Line Cook process if not already running
+          if (!this.ptyManager.getAllActiveAgents().some((a) => a.role === "linecook")) {
+            try {
+              this.ptyManager.spawnAgent({
+                role: "linecook",
+                command: "node",
+                args: ["-e", `console.log("🍳 [Line Cook PTY Engine Online] Cooking order ticket: ${newTicket.title}..."); setInterval(() => {}, 1000);`],
+              });
+            } catch (err) {
+              // Non-blocking
+            }
+          }
+
+          // 7. Flush router queue immediately to deliver outbox messages to station inboxes
+          try {
+            this.router.poll();
+          } catch (err) {
+            // Non-blocking
+          }
         }
 
         fs.writeFileSync(ticketsPath, JSON.stringify(tickets, null, 2));

@@ -81,7 +81,20 @@ const storeInstance = new ReactiveStore<KitchenState>((set, get) => ({
   fetchTickets: async () => {
     if (typeof window !== "undefined" && window.agentgrid) {
       const tkts = await window.agentgrid.getTickets();
-      set({ tickets: tkts });
+      set((state) => {
+        const logs = { ...state.terminalLogs };
+        tkts.forEach((t) => {
+          if (t.assignee && (!logs[t.assignee] || logs[t.assignee] === DEFAULT_LOGS[t.assignee])) {
+            logs[t.assignee] = `👨‍🍳 [${t.assignee.toUpperCase()} PASS]\n` +
+              `Active Ticket: ${t.title}\n` +
+              `Status: ${t.status.toUpperCase()}\n` +
+              (t.description ? `Description: ${t.description}\n` : "") +
+              `Order ID: ${t.id}\n` +
+              `──────────────────────────────────────────────\n`;
+          }
+        });
+        return { tickets: tkts, terminalLogs: logs };
+      });
     }
   },
 
@@ -96,6 +109,8 @@ const storeInstance = new ReactiveStore<KitchenState>((set, get) => ({
     if (typeof window !== "undefined" && window.agentgrid) {
       const created = await window.agentgrid.createTicket(ticketInput);
       await get().fetchTickets();
+      await get().fetchActiveAgents();
+      await get().fetchRegistry();
       return created;
     }
   },
