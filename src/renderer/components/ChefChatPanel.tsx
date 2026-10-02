@@ -28,6 +28,14 @@ export const ChefChatPanel: React.FC = () => {
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputMessage.trim()) return;
+
+    if (!activeProject?.path || activeProject.path.trim() === "") {
+      const chosen = await chooseDirectoryForProject(activeProject?.id || "proj-default");
+      if (!chosen) {
+        return; // User cancelled
+      }
+    }
+
     const msg = inputMessage;
     setInputMessage("");
     await sendChatMessage(msg);
@@ -108,21 +116,51 @@ export const ChefChatPanel: React.FC = () => {
         )}
 
         {/* Working Directory Selector */}
-        <div className="flex items-center justify-between bg-slate-900/80 px-2 py-1 rounded border border-slate-800/80 text-[11px]">
+        <div className={`flex items-center justify-between px-2.5 py-1.5 rounded border text-[11px] transition-all ${
+          activeProject?.path
+            ? "bg-slate-900/80 border-slate-800"
+            : "bg-amber-950/70 border-amber-600/80 animate-pulse"
+        }`}>
           <div className="flex items-center space-x-1.5 min-w-0 pr-2">
             <span className="text-amber-400 shrink-0">📂</span>
-            <span className="text-slate-300 font-mono truncate" title={activeProject?.path}>
-              {activeProject?.path || "No folder selected"}
+            <span
+              className={`font-mono truncate ${activeProject?.path ? "text-slate-300" : "text-amber-300 font-bold"}`}
+              title={activeProject?.path || "No folder selected"}
+            >
+              {activeProject?.path || "⚠️ No workspace folder chosen"}
             </span>
           </div>
           <button
             onClick={handleChooseFolder}
-            className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-amber-400 text-[10px] font-bold rounded transition-colors shrink-0"
+            className={`px-2.5 py-1 text-[10px] font-bold rounded transition-all shrink-0 ${
+              activeProject?.path
+                ? "bg-slate-800 hover:bg-slate-700 text-amber-400"
+                : "bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold shadow"
+            }`}
           >
-            Change
+            {activeProject?.path ? "Change" : "📁 Choose Folder"}
           </button>
         </div>
       </div>
+
+      {/* Workspace Selection Banner if no folder chosen */}
+      {!activeProject?.path && (
+        <div className="mx-3 mt-3 p-3 bg-gradient-to-r from-amber-950/80 to-slate-900 border border-amber-600/80 rounded-lg shadow-lg flex items-center justify-between">
+          <div className="flex items-center space-x-2.5">
+            <span className="text-2xl">📂</span>
+            <div>
+              <h4 className="text-xs font-extrabold text-amber-300">Choose Workspace Directory First</h4>
+              <p className="text-[10px] text-slate-400">Pick where your project files & code will be prepared</p>
+            </div>
+          </div>
+          <button
+            onClick={handleChooseFolder}
+            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded shadow transition-all shrink-0"
+          >
+            Choose Folder
+          </button>
+        </div>
+      )}
 
       {/* 2. Interactive Brigade Chat Stream */}
       <div ref={chatScrollRef} className="flex-1 p-3 overflow-y-auto space-y-3 bg-slate-950/60">

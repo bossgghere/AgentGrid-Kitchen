@@ -93,13 +93,22 @@ export const KitchenPass: React.FC = () => {
               ╚═══════════════════════════════════════════════════════════════════════╝
             </div>
             <div className="pt-2 text-slate-400 space-y-1">
-              <div>📁 Project Workspace : <span className="text-slate-200">{currentProject?.path}</span></div>
+              <div>📁 Project Workspace : <span className={currentProject?.path ? "text-slate-200" : "text-amber-400 font-bold"}>{currentProject?.path || "⚠️ None selected (Click 'Choose Folder' in Right Panel)"}</span></div>
               <div>👨‍🍳 Active Brigade    : <span className="text-amber-400">{activeBrigadeChefs.length > 0 ? activeBrigadeChefs.join(", ") : "Standby (Waiting for order)"}</span></div>
               <div>⚡ Socket Telemetry  : <span className="text-emerald-400">/tmp/ag.sock (Online)</span></div>
             </div>
             <div className="pt-4 text-slate-500 text-[11px] leading-relaxed">
-              💡 Type a task in the <span className="text-amber-400">Chat Panel</span> on the right (e.g. <span className="text-slate-300 italic">"build a small website with a hero section"</span>).<br />
-              The Head Chef will analyze the order, summon the necessary station chefs to the left floor, and stream execution live to this terminal.
+              {!currentProject?.path ? (
+                <div className="text-amber-300 font-semibold bg-amber-950/40 p-2.5 rounded border border-amber-800/60">
+                  👉 <span className="underline">Step 1</span>: Select your project workspace directory in the right panel to begin.<br />
+                  <span className="text-slate-400 font-normal">No random directories will be used; all code and dishes will be prepared in your chosen folder.</span>
+                </div>
+              ) : (
+                <div>
+                  💡 Type a task in the <span className="text-amber-400">Chat Panel</span> on the right (e.g. <span className="text-slate-300 italic">"build a landing page with hero and features"</span>).<br />
+                  The Head Chef will formulate the plan, summon the necessary station chefs to the floor, and stream execution live to this terminal.
+                </div>
+              )}
             </div>
           </div>
         )}

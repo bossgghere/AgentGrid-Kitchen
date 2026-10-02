@@ -106,7 +106,7 @@ const loadSavedProjects = (): ProjectItem[] => {
     } catch {}
   }
   return [
-    { id: "proj-default", name: "Dish-Workspace", path: "/Users/gourav/Desktop/AgentGrid-Kitchen/workspace" },
+    { id: "proj-default", name: "My Workspace", path: "" },
   ];
 };
 
@@ -125,7 +125,7 @@ const storeInstance = new ReactiveStore<KitchenState>((set, get) => ({
     {
       id: "welcome-1",
       sender: "headchef",
-      text: "👨‍🍳 Bonjour, Executive Chef! The kitchen is preheated and quiet. Select your project directory above and instruct me what to cook. Only the required station chefs will be summoned to the floor.",
+      text: "👨‍🍳 Bonjour, Executive Chef! Please select your project workspace directory above to begin. Once chosen, instruct me what to cook and only the required station chefs will be summoned to prepare your files.",
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ],
@@ -184,7 +184,31 @@ const storeInstance = new ReactiveStore<KitchenState>((set, get) => ({
 
     set((state) => ({ chatMessages: [...state.chatMessages, userMsg] }));
 
-    const currentProject = get().projects.find((p) => p.id === get().activeProjectId) || get().projects[0];
+    let currentProject = get().projects.find((p) => p.id === get().activeProjectId) || get().projects[0];
+
+    // Explicit Folder Selection Check:
+    // Never randomly choose a directory! The user must choose their project folder first!
+    if (!currentProject?.path || currentProject.path.trim() === "") {
+      let chosenPath: string | null = null;
+      if (typeof window !== "undefined" && window.agentgrid?.selectDirectory) {
+        chosenPath = await get().chooseDirectoryForProject(currentProject.id);
+      }
+
+      if (!chosenPath) {
+        // User cancelled folder picker or no directory selected
+        const needDirMsg: ChatMessage = {
+          id: `chat-${Date.now()}-need-dir`,
+          sender: "headchef",
+          text: "⚠️ Chef, please select your project folder first! Click the 'Choose Folder' button above so the brigade knows exactly where to write your code.",
+          timestamp: now,
+        };
+        set((state) => ({ chatMessages: [...state.chatMessages, needDirMsg] }));
+        return;
+      }
+
+      // Re-fetch project with newly assigned path
+      currentProject = get().projects.find((p) => p.id === get().activeProjectId) || get().projects[0];
+    }
 
     // Dynamic Station Chef Selection:
     const summonedRoles: ChefRole[] = ["headchef"];
