@@ -55,12 +55,18 @@ export class PtyManager extends EventEmitter {
       path.join(os.homedir(), ".local", "bin"),
       "/opt/homebrew/bin",
       "/usr/local/bin",
+      "/usr/bin",
+      "/bin",
+      "/usr/sbin",
+      "/sbin",
       process.env.PATH || "",
     ].filter(Boolean).join(":");
 
     // Inject system environment variables
     const processEnv = {
       ...process.env,
+      HOME: os.homedir(),
+      USER: os.userInfo().username,
       PATH: augmentedPath,
       ...env,
       HIVE_SOCK: this.defaultSocketPath,
@@ -68,6 +74,7 @@ export class PtyManager extends EventEmitter {
       AGENT_ROLE: role,
       FORCE_COLOR: "1",
       TERM: "xterm-256color",
+      COLORTERM: "truecolor",
     };
 
     // 1. Try spawning with node-pty if interactive session requested
@@ -216,6 +223,23 @@ export class PtyManager extends EventEmitter {
       }
     }
 
+    return false;
+  }
+
+  /**
+   * Resizes an active PTY session (columns and rows)
+   */
+  public resizeAgent(role: ChefRole, cols: number, rows: number): boolean {
+    const active = this.activeProcesses.get(role);
+    if (!active || !active.ptyProcess) return false;
+    try {
+      if (typeof active.ptyProcess.resize === "function") {
+        active.ptyProcess.resize(cols, rows);
+        return true;
+      }
+    } catch (err) {
+      // Ignored
+    }
     return false;
   }
 

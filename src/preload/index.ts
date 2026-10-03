@@ -11,6 +11,15 @@ const api: AgentGridApi = {
   spawnAgent: (options: PtySpawnOptions) =>
     ipcRenderer.invoke(IPC_CHANNELS.SPAWN_AGENT, options),
 
+  spawnAgy: (workspacePath?: string, role?: ChefRole) =>
+    ipcRenderer.invoke(IPC_CHANNELS.SPAWN_AGY, workspacePath, role),
+
+  restartAgy: (workspacePath?: string, role?: ChefRole) =>
+    ipcRenderer.invoke(IPC_CHANNELS.RESTART_AGY, workspacePath, role),
+
+  resizeAgent: (role: ChefRole, cols: number, rows: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.RESIZE_AGENT, role, cols, rows),
+
   writeToAgent: (role: ChefRole, data: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.WRITE_AGENT, role, data),
 

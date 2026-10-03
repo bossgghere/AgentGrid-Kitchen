@@ -77,17 +77,29 @@ export const CommandCenter: React.FC = () => {
       }
     }
 
-    const msg = inputMessage;
+    const msg = inputMessage.trim();
     setInputMessage("");
     setCommandTab("terminal"); // Auto-switch to terminal to watch execution live!
 
-    // Direct CLI command forwarding
-    const isDirectCli = /^(agy|npm|npx|node|git|ls|cd|pwd|clear|echo|cat|touch|mkdir|python|python3)\b/i.test(msg.trim());
-    if (isDirectCli && typeof window !== "undefined" && window.agentgrid?.writeToAgent) {
-      window.agentgrid.writeToAgent("headchef", `${msg.trim()}\n`);
-      return;
+    // Direct forwarding to real interactive agy session in the terminal
+    if (typeof window !== "undefined" && window.agentgrid) {
+      if (window.agentgrid.getActiveAgents) {
+        const agents = await window.agentgrid.getActiveAgents();
+        const isRunning = agents.some((a) => a.role === "headchef" && a.status === "running");
+        if (!isRunning && window.agentgrid.spawnAgy) {
+          await window.agentgrid.spawnAgy(currentProject?.path, "headchef");
+          setTimeout(() => {
+            window.agentgrid?.writeToAgent("headchef", `${msg}\r`);
+          }, 800);
+        } else {
+          await window.agentgrid.writeToAgent("headchef", `${msg}\r`);
+        }
+      } else if (window.agentgrid.writeToAgent) {
+        await window.agentgrid.writeToAgent("headchef", `${msg}\r`);
+      }
     }
 
+    // Also update UI store (chat history and task ticket) so tasks tab and floor state stay in sync!
     await sendChatMessage(msg);
   };
 
@@ -245,12 +257,25 @@ export const CommandCenter: React.FC = () => {
 
       {/* 2. Middle Live Stage (Terminal / Tasks / Memory / Activity) */}
       <div className="flex-1 bg-[#fffdfa] overflow-hidden flex flex-col relative border-b-2 border-[#2d241d]">
-        {/* Terminal Sub-header Bar (live · pty pty-god + zoom controls) */}
+        {/* Terminal Sub-header Bar (live · agy CLI + restart + zoom controls) */}
         {commandTab === "terminal" && (
           <div className="bg-[#fbf9f4] px-3 py-1 border-b border-[#2d241d] flex items-center justify-between text-[11px] font-mono shrink-0">
-            <div className="flex items-center space-x-1.5">
-              <span className="w-2 h-2 bg-[#22c55e] inline-block"></span>
-              <span className="font-bold text-[#2d241d]">live · pty pty-god</span>
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1.5">
+                <span className={`w-2 h-2 inline-block ${isHeadChefWorking ? "bg-[#22c55e] animate-pulse" : "bg-[#eab308]"}`}></span>
+                <span className="font-bold text-[#2d241d]">{isHeadChefWorking ? "live · agy CLI" : "agy standby"}</span>
+              </div>
+              <button
+                onClick={async () => {
+                  if (typeof window !== "undefined" && window.agentgrid?.restartAgy) {
+                    await window.agentgrid.restartAgy(currentProject?.path, "headchef");
+                  }
+                }}
+                className="px-1.5 py-0.2 bg-[#fffdfa] hover:bg-[#ebdcc0] text-[#2d241d] border border-[#2d241d] rounded-xs text-[9px] font-bold shadow-2xs"
+                title="Restart agy CLI interactive session in this workspace"
+              >
+                🔄 restart agy
+              </button>
             </div>
             <div className="flex items-center space-x-1">
               <button

@@ -7,6 +7,9 @@ import type { AgentStatusChangeEvent, HookEventPayload } from "../domain/types/h
  */
 export const IPC_CHANNELS = {
   SPAWN_AGENT: "ag:spawn-agent",
+  SPAWN_AGY: "ag:spawn-agy",
+  RESTART_AGY: "ag:restart-agy",
+  RESIZE_AGENT: "ag:resize-agent",
   WRITE_AGENT: "ag:write-agent",
   KILL_AGENT: "ag:kill-agent",
   GET_ACTIVE_AGENTS: "ag:get-active-agents",
@@ -29,6 +32,9 @@ export const IPC_CHANNELS = {
  */
 export interface AgentGridApi {
   spawnAgent: (options: PtySpawnOptions) => Promise<PtyProcessInfo>;
+  spawnAgy: (workspacePath?: string, role?: ChefRole) => Promise<PtyProcessInfo>;
+  restartAgy: (workspacePath?: string, role?: ChefRole) => Promise<PtyProcessInfo>;
+  resizeAgent: (role: ChefRole, cols: number, rows: number) => Promise<boolean>;
   writeToAgent: (role: ChefRole, data: string) => Promise<boolean>;
   killAgent: (role: ChefRole) => Promise<boolean>;
   getActiveAgents: () => Promise<PtyProcessInfo[]>;

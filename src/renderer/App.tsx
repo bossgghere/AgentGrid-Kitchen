@@ -15,6 +15,7 @@ export const App: React.FC = () => {
     handleHookReceived,
     projects,
     activeProjectId,
+    chooseDirectoryForProject,
   } = useKitchenStore();
 
   const currentProject = projects.find((p) => p.id === activeProjectId) || projects[0];
@@ -64,13 +65,18 @@ export const App: React.FC = () => {
         {/* Center Workspace Folder Bar */}
         <div className="hidden md:flex items-center space-x-2 text-[11px] font-mono text-[#5a4836]">
           <span>📁 Workspace:</span>
-          <span className={`px-2 py-0.5 rounded border ${
-            currentProject?.path
-              ? "bg-[#fffdfa] border-[#2d241d] text-[#2d241d] font-bold shadow-sm"
-              : "bg-[#fee2e2] border-[#dc2626] text-[#b91c1c] font-bold animate-pulse"
-          }`}>
-            {currentProject?.path ? currentProject.name : "Choose folder below"}
-          </span>
+          <button
+            onClick={() => {
+              if (currentProject) chooseDirectoryForProject(currentProject.id);
+            }}
+            className={`px-2 py-0.5 rounded border transition-all cursor-pointer ${
+              currentProject?.path
+                ? "bg-[#fffdfa] hover:bg-[#ebdcc0] border-[#2d241d] text-[#2d241d] font-bold shadow-sm"
+                : "bg-[#fee2e2] hover:bg-[#fecaca] border-[#dc2626] text-[#b91c1c] font-bold animate-pulse"
+            }`}
+          >
+            {currentProject?.path ? `${currentProject.name} (click to change)` : "📁 Click to Choose Folder"}
+          </button>
         </div>
 
         {/* Right Window Controls (Moon, Maximize, Close) */}
@@ -104,6 +110,54 @@ export const App: React.FC = () => {
       <footer className="shrink-0 z-10 px-2.5 pb-2.5">
         <KitchenBrigadeDeck />
       </footer>
+
+      {/* Initial Workspace Location Selection Modal */}
+      {(!currentProject?.path || currentProject.path.trim() === "") && (
+        <div className="fixed inset-0 z-50 bg-[#1c1917]/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#fbf9f4] border-3 border-[#2d241d] rounded-md p-6 max-w-md w-full shadow-2xl space-y-4 font-mono text-[#2d241d]">
+            <div className="flex items-center space-x-3 border-b-2 border-[#2d241d] pb-3">
+              <div className="w-10 h-10 rounded bg-[#eab308] border-2 border-[#2d241d] flex items-center justify-center text-2xl shadow-xs shrink-0">
+                👨‍🍳
+              </div>
+              <div>
+                <h2 className="text-base font-black tracking-tight text-[#2d241d]">CHOOSE WORKSPACE LOCATION</h2>
+                <p className="text-[11px] text-[#5c4a39]">AgentGrid Kitchen • Real Antigravity CLI</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-[#4a3b2c] leading-relaxed">
+              Select the workspace folder where your project files will be cooked. As soon as you choose your folder, the real <strong>agy</strong> CLI interactive terminal will boot up.
+            </p>
+
+            <div className="bg-[#f7ecd0] border border-[#2d241d] rounded p-3 text-xs space-y-1.5">
+              <div className="font-bold flex items-center space-x-1.5 text-[#2d241d]">
+                <span>⚡</span>
+                <span>Immediate Next Steps:</span>
+              </div>
+              <ul className="list-disc list-inside text-[11px] text-[#5c4a39] space-y-1">
+                <li>Spawns real interactive <code>agy</code> session directly in your folder</li>
+                <li>Display OAuth login link if authentication is required</li>
+                <li>Full normal terminal access + direct typing into the session</li>
+                <li>Connects Head Chef QUEUE orders straight to the CLI</li>
+              </ul>
+            </div>
+
+            <div className="pt-2">
+              <button
+                onClick={async () => {
+                  if (currentProject) {
+                    await chooseDirectoryForProject(currentProject.id);
+                  }
+                }}
+                className="w-full py-2.5 bg-[#eab308] hover:bg-[#ca8a04] text-[#18181b] font-black text-xs rounded border-2 border-[#2d241d] shadow transition-all flex items-center justify-center space-x-2 cursor-pointer"
+              >
+                <span>📁</span>
+                <span>CHOOSE PROJECT DIRECTORY</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { Terminal } from "xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { WebLinksAddon } from "@xterm/addon-web-links";
 import type { PassTab } from "../store/kitchenStore.ts";
 
 interface XtermTerminalProps {
@@ -57,18 +58,35 @@ export const XtermTerminal: React.FC<XtermTerminalProps> = ({
 
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
+
+    // 2. Add clickable web links addon (for browser OAuth authorization links!)
+    const webLinksAddon = new WebLinksAddon((_event, uri) => {
+      if (typeof window !== "undefined" && window.agentgrid?.openExternal) {
+        window.agentgrid.openExternal(uri);
+      } else {
+        window.open(uri, "_blank");
+      }
+    });
+    term.loadAddon(webLinksAddon);
+
     term.open(containerRef.current);
 
-    setTimeout(() => {
+    const fitAndResize = () => {
       try {
         fitAddon.fit();
+        const targetRole = activeRole === "master" ? "headchef" : activeRole;
+        if (typeof window !== "undefined" && window.agentgrid?.resizeAgent && term.cols && term.rows) {
+          window.agentgrid.resizeAgent(targetRole as any, term.cols, term.rows);
+        }
       } catch {}
-    }, 50);
+    };
+
+    setTimeout(fitAndResize, 50);
 
     termRef.current = term;
     fitAddonRef.current = fitAddon;
 
-    // 2. Wire user keyboard typing directly into the PTY backend
+    // 3. Wire user keyboard typing directly into the PTY backend
     const onDataDisposable = term.onData((data) => {
       const targetRole = activeRole === "master" ? "headchef" : activeRole;
       if (typeof window !== "undefined" && window.agentgrid?.writeToAgent) {
@@ -76,7 +94,7 @@ export const XtermTerminal: React.FC<XtermTerminalProps> = ({
       }
     });
 
-    // 3. Listen to incoming real-time PTY stream from Electron main process
+    // 4. Listen to incoming real-time PTY stream from Electron main process
     let unbindPty: (() => void) | null = null;
     if (typeof window !== "undefined" && window.agentgrid?.onPtyData) {
       unbindPty = window.agentgrid.onPtyData((event) => {
@@ -86,43 +104,43 @@ export const XtermTerminal: React.FC<XtermTerminalProps> = ({
       });
     }
 
-    // 4. Auto-fit on window resize
-    const handleResize = () => {
-      try {
-        fitAddon.fit();
-      } catch {}
-    };
-    window.addEventListener("resize", handleResize);
+    // 5. Auto-fit on window resize
+    window.addEventListener("resize", fitAndResize);
 
-    // Initial greeting line matching Munder Difflin
-    term.writeln("\x1b[1m> Let's ask each of the agents what are they up to. In short,\x1b[0m");
-    term.writeln("\x1b[90m• On it — sending each of the agents a status query.\x1b[0m");
-    term.writeln("\x1b[32mRan 1 shell command\x1b[0m");
+    // Initial greeting banner
+    term.writeln("\x1b[1;33m[AGENTGRID KITCHEN] ──► Real Antigravity CLI Terminal\x1b[0m");
     if (currentWorkspacePath) {
-      term.writeln(`\x1b[90m• Target Workspace:\x1b[0m \x1b[34m${currentWorkspacePath}\x1b[0m`);
+      term.writeln(`\x1b[90m• Workspace:\x1b[0m \x1b[34m${currentWorkspacePath}\x1b[0m`);
     } else {
-      term.writeln("\x1b[33m• Workspace: Standby (select folder below)\x1b[0m");
+      term.writeln("\x1b[33m• Workspace: Standby (please select workspace folder to begin)\x1b[0m");
     }
-    term.writeln("\x1b[90m* Ready for guest orders in QUEUE\x1b[0m\r\n");
+    term.writeln("\x1b[90m• Real-time PTY session connected. Keystrokes & OAuth links active.\x1b[0m\r\n");
 
-    // 5. Auto-spawn interactive shell in workspace if not already running
-    if (typeof window !== "undefined" && window.agentgrid?.getActiveAgents && currentWorkspacePath) {
-      window.agentgrid.getActiveAgents().then((agents) => {
-        const isRunning = agents.some((a) => a.role === "headchef" && a.status === "running");
-        if (!isRunning && window.agentgrid?.spawnAgent) {
-          window.agentgrid.spawnAgent({
-            role: "headchef",
-            command: "/bin/zsh",
-            args: ["-l"],
-            cwd: currentWorkspacePath,
-            interactive: true,
-          }).catch(() => {});
-        }
-      });
+    // 6. Auto-spawn interactive agy CLI in workspace if not already running
+    if (typeof window !== "undefined" && currentWorkspacePath) {
+      const targetRole = activeRole === "master" ? "headchef" : activeRole;
+      if (window.agentgrid?.getActiveAgents) {
+        window.agentgrid.getActiveAgents().then((agents) => {
+          const isRunning = agents.some((a) => a.role === targetRole && a.status === "running");
+          if (!isRunning) {
+            if (targetRole === "headchef" && window.agentgrid?.spawnAgy) {
+              window.agentgrid.spawnAgy(currentWorkspacePath, "headchef");
+            } else if (window.agentgrid?.spawnAgent) {
+              window.agentgrid.spawnAgent({
+                role: targetRole as any,
+                command: process.env.SHELL || "/bin/zsh",
+                args: ["-l"],
+                cwd: currentWorkspacePath,
+                interactive: true,
+              }).catch(() => {});
+            }
+          }
+        });
+      }
     }
 
     return () => {
-      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("resize", fitAndResize);
       onDataDisposable.dispose();
       if (unbindPty) unbindPty();
       term.dispose();

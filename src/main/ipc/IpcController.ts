@@ -41,6 +41,22 @@ export class IpcController {
   }
 
   /**
+   * Discovers the installed agy CLI binary
+   */
+  public getAgyBinary(): string | null {
+    if (process.env.AGY_PATH && fs.existsSync(process.env.AGY_PATH)) return process.env.AGY_PATH;
+    const candidates = [
+      path.join(os.homedir(), ".local", "bin", "agy"),
+      "/usr/local/bin/agy",
+      "/opt/homebrew/bin/agy",
+    ];
+    for (const c of candidates) {
+      if (fs.existsSync(c)) return c;
+    }
+    return null;
+  }
+
+  /**
    * Registers all Electron IPC Channel Handlers
    */
   private registerHandlers(
@@ -50,6 +66,52 @@ export class IpcController {
     // 1. Spawn Agent Process
     ipcMain.handle(IPC_CHANNELS.SPAWN_AGENT, (_event, options: PtySpawnOptions) => {
       return this.ptyManager.spawnAgent(options);
+    });
+
+    // 1b. Spawn Real Interactive AGY CLI Session
+    ipcMain.handle(IPC_CHANNELS.SPAWN_AGY, (_event, workspacePath?: string, role: ChefRole = "headchef") => {
+      const targetDir = workspacePath || this.activeWorkspacePath || process.cwd();
+      if (targetDir && fs.existsSync(targetDir)) {
+        this.activeWorkspacePath = targetDir;
+        this.ensurePreviewServerRunning();
+      }
+      const agyBin = this.getAgyBinary();
+      const cmd = agyBin || process.env.SHELL || "/bin/zsh";
+      const args = agyBin ? ["--dangerously-skip-permissions"] : ["-l"];
+
+      return this.ptyManager.spawnAgent({
+        role,
+        command: cmd,
+        args,
+        cwd: targetDir,
+        interactive: true,
+      });
+    });
+
+    // 1c. Restart Interactive AGY CLI Session
+    ipcMain.handle(IPC_CHANNELS.RESTART_AGY, (_event, workspacePath?: string, role: ChefRole = "headchef") => {
+      this.ptyManager.killAgent(role);
+      const targetDir = workspacePath || this.activeWorkspacePath || process.cwd();
+      if (targetDir && fs.existsSync(targetDir)) {
+        this.activeWorkspacePath = targetDir;
+        this.ensurePreviewServerRunning();
+      }
+      const agyBin = this.getAgyBinary();
+      const cmd = agyBin || process.env.SHELL || "/bin/zsh";
+      const args = agyBin ? ["--dangerously-skip-permissions"] : ["-l"];
+
+      return this.ptyManager.spawnAgent({
+        role,
+        command: cmd,
+        args,
+        cwd: targetDir,
+        interactive: true,
+      });
+    });
+
+    // 1d. Resize PTY Terminal (cols, rows)
+    ipcMain.handle(IPC_CHANNELS.RESIZE_AGENT, (_event, role: ChefRole, cols: number, rows: number) => {
+      return this.ptyManager.resizeAgent(role, cols, rows);
     });
 
     // 2. Write stdin Data to Agent
@@ -350,6 +412,24 @@ export class IpcController {
         const chosen = result.filePaths[0];
         this.activeWorkspacePath = chosen;
         this.ensurePreviewServerRunning();
+
+        // Immediately auto-spawn real agy interactive session in the chosen directory!
+        try {
+          this.ptyManager.killAgent("headchef");
+          const agyBin = this.getAgyBinary();
+          const cmd = agyBin || process.env.SHELL || "/bin/zsh";
+          const args = agyBin ? ["--dangerously-skip-permissions"] : ["-l"];
+          this.ptyManager.spawnAgent({
+            role: "headchef",
+            command: cmd,
+            args,
+            cwd: chosen,
+            interactive: true,
+          });
+        } catch (e) {
+          console.error("Failed to auto-spawn agy on folder select:", e);
+        }
+
         return chosen;
       } catch (err) {
         console.error("Failed to open directory dialog:", err);
